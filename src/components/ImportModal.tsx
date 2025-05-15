@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -84,6 +83,7 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
       }
       
       const colorData = parseColorData(data);
+      console.log("Parsed color data:", colorData);
       
       if (colorData.length === 0) {
         toast.error("No valid color data found in the file");
@@ -113,7 +113,7 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
           const workbook = XLSX.read(data, { type: "binary" });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(worksheet);
+          const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
           resolve(json);
         } catch (error) {
           reject(error);
@@ -126,10 +126,60 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
   };
   
   const parseColorData = (data: any[]): ColorData[] => {
+    // Show a sample of what's in the data
+    console.log("Sample data from Excel:", data.slice(0, 2));
+    
     return data.map((row, index) => {
-      // Try to find color values in various formats
-      const colorValue = row.Color || row.HEX || row.RGB || row.color || row.hex || row.rgb || "";
-      const colorName = row.Name || row.NAME || row.name || `Color ${index + 1}`;
+      // Debug: log each row to see what we're working with
+      console.log(`Processing row ${index}:`, row);
+      
+      // Case-insensitive search through all properties
+      let colorValue = "";
+      let colorName = "";
+      
+      // Find color value by checking all properties with various names
+      for (const key in row) {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes('color') || lowerKey.includes('hex') || lowerKey.includes('rgb') || lowerKey === 'value') {
+          const value = row[key];
+          if (value && typeof value === 'string' && (value.startsWith('#') || value.startsWith('rgb'))) {
+            colorValue = value;
+            break;
+          } else if (value && typeof value === 'string' && value.match(/^[0-9a-f]{6}$/i)) {
+            // If it's a hex without # prefix, add it
+            colorValue = '#' + value;
+            break;
+          }
+        }
+      }
+      
+      // If no color value found, try to use any non-empty string field
+      if (!colorValue) {
+        for (const key in row) {
+          const value = row[key];
+          if (value && typeof value === 'string' && value.trim()) {
+            // Try to detect if this string might be a color
+            if (value.match(/^[0-9a-f]{6}$/i)) {
+              colorValue = '#' + value;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Find name
+      for (const key in row) {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes('name') || lowerKey === 'title' || lowerKey === 'label') {
+          colorName = row[key] || `Color ${index + 1}`;
+          break;
+        }
+      }
+      
+      // If no name found, use default
+      if (!colorName) {
+        colorName = `Color ${index + 1}`;
+      }
       
       // Detect and process color format
       const format = detectColorFormat(colorValue);
@@ -154,7 +204,30 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
             return hex.length === 1 ? "0" + hex : hex;
           }).join("")}`;
         }
+      } else {
+        // Check if we have separate R, G, B columns
+        let r = -1, g = -1, b = -1;
+        for (const key in row) {
+          const lowerKey = key.toLowerCase();
+          if (lowerKey === 'r' || lowerKey === 'red') {
+            r = parseInt(row[key]);
+          } else if (lowerKey === 'g' || lowerKey === 'green') {
+            g = parseInt(row[key]);
+          } else if (lowerKey === 'b' || lowerKey === 'blue') {
+            b = parseInt(row[key]);
+          }
+        }
+        
+        if (r >= 0 && g >= 0 && b >= 0 && r <= 255 && g <= 255 && b <= 255) {
+          rgb = [r, g, b];
+          hex = `#${rgb.map(x => {
+            const hex = x.toString(16);
+            return hex.length === 1 ? "0" + hex : hex;
+          }).join("")}`;
+        }
       }
+      
+      console.log(`Result for row ${index}:`, { name: colorName, hex, rgb });
       
       return {
         id: Date.now() + index + "",
@@ -165,7 +238,11 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
         lab: null,
         family: null
       };
-    }).filter(color => color.hex !== "#000000"); // Filter out invalid colors
+    }).filter(color => {
+      // Keep colors that have valid hex values
+      return color.hex !== "#000000" && 
+             color.rgb.every(val => !isNaN(val) && val >= 0 && val <= 255);
+    });
   };
   
   const resetForm = () => {

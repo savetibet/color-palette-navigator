@@ -1,51 +1,38 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { FileDown } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const SampleTemplateButton = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  
-  const generateSampleTemplate = () => {
-    setIsGenerating(true);
+  const downloadTemplate = () => {
+    // Create sample data
+    const sampleData = [
+      { Name: "Red", HEX: "#FF0000" },
+      { Name: "Green", HEX: "#00FF00" },
+      { Name: "Blue", HEX: "#0000FF" },
+      { Name: "Yellow", HEX: "#FFFF00" },
+      { Name: "RGB Example", RGB: "rgb(255, 99, 71)" },
+    ];
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
     
-    try {
-      // Create sample data
-      const data = [
-        { Name: "Red", Color: "#FF0000", RGB: "rgb(255, 0, 0)" },
-        { Name: "Green", Color: "#00FF00", RGB: "rgb(0, 255, 0)" },
-        { Name: "Blue", Color: "#0000FF", RGB: "rgb(0, 0, 255)" },
-        { Name: "Yellow", Color: "#FFFF00", RGB: "rgb(255, 255, 0)" },
-        { Name: "Cyan", Color: "#00FFFF", RGB: "rgb(0, 255, 255)" },
-      ];
-      
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      
-      // Create workbook
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Colors");
-      
-      // Generate file and trigger download
-      XLSX.writeFile(workbook, "color-template.xlsx");
-    } catch (error) {
-      console.error("Error generating template:", error);
-    } finally {
-      setIsGenerating(false);
-    }
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sample Colors");
+    
+    // Generate file and download
+    XLSX.writeFile(workbook, "color-library-template.xlsx");
   };
-  
+
   return (
     <Button 
       variant="outline" 
-      size="sm" 
-      onClick={generateSampleTemplate}
-      disabled={isGenerating}
-      className="flex items-center gap-1"
+      onClick={downloadTemplate}
+      className="flex items-center gap-2"
     >
-      <Download className="h-4 w-4" />
-      {isGenerating ? "Generating..." : "Download Template"}
+      <FileDown className="h-4 w-4" />
+      Download Template
     </Button>
   );
 };

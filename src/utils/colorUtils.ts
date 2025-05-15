@@ -75,11 +75,28 @@ export const deltaE = (lab1: number[], lab2: number[]): number => {
 export const detectColorFormat = (colorStr: string): "hex" | "rgb" | "unknown" => {
   if (!colorStr) return "unknown";
   
-  const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-  const rgbRegex = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/;
+  // Clean the string first
+  const cleanedStr = colorStr.trim().toLowerCase();
   
-  if (hexRegex.test(colorStr)) return "hex";
-  if (rgbRegex.test(colorStr)) return "rgb";
+  // More flexible hex detection
+  if (cleanedStr.startsWith('#')) {
+    // Check for valid hex format after the #
+    const hexPart = cleanedStr.substring(1);
+    if (/^[0-9a-f]{3}$|^[0-9a-f]{6}$/i.test(hexPart)) {
+      return "hex";
+    }
+  } else if (/^[0-9a-f]{6}$/i.test(cleanedStr)) {
+    // Hex without # prefix
+    return "hex";
+  }
+  
+  // RGB detection
+  if (cleanedStr.startsWith('rgb')) {
+    const rgbRegex = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i;
+    if (rgbRegex.test(cleanedStr)) {
+      return "rgb";
+    }
+  }
   
   return "unknown";
 };
