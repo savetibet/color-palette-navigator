@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import { ColorData, ColorLibraryData } from "@/types/colors";
 import { getColorFamily } from "@/utils/colorUtils";
 import { cn } from "@/lib/utils";
+import SampleTemplateButton from "@/components/SampleTemplateButton";
 
 const Index = () => {
   const [colorLibraries, setColorLibraries] = useState<ColorLibraryData[]>([]);
@@ -126,8 +127,32 @@ const Index = () => {
     const library = colorLibraries.find(lib => lib.id === libraryId);
     if (!library) return;
     
-    // Placeholder for export functionality
-    toast.success(`Exported "${library.name}" library`);
+    try {
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      
+      // Format colors for export
+      const exportData = library.colors.map(color => ({
+        Name: color.name,
+        HEX: color.hex,
+        RGB: `rgb(${color.rgb.join(", ")})`,
+        Family: color.family || "Unknown"
+      }));
+      
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, library.name);
+      
+      // Generate file and download
+      XLSX.writeFile(workbook, `${library.name}-colors.xlsx`);
+      
+      toast.success(`Exported "${library.name}" library`);
+    } catch (error) {
+      console.error("Error exporting library:", error);
+      toast.error("Failed to export library");
+    }
   };
 
   return (
@@ -165,12 +190,25 @@ const Index = () => {
             <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
               Import a new color library or create one by adding colors manually.
             </p>
-            <button
-              onClick={() => setImportModalOpen(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
-            >
-              Import Colors
-            </button>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={() => setImportModalOpen(true)}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+              >
+                Import Colors
+              </button>
+              <SampleTemplateButton />
+            </div>
+            <div className="mt-8 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+              <h3 className="text-lg font-medium mb-2">How to import colors:</h3>
+              <ol className="list-decimal list-inside text-left text-gray-600 dark:text-gray-400 space-y-2">
+                <li>Download the template file using the button above</li>
+                <li>Fill in your color data (Name, HEX or RGB values)</li>
+                <li>Save the file as Excel (.xlsx) or CSV (.csv)</li>
+                <li>Click "Import Colors" and upload your file</li>
+                <li>Verify the imported data and give your library a name</li>
+              </ol>
+            </div>
           </div>
         )}
       </main>

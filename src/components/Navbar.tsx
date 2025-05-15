@@ -1,16 +1,23 @@
-
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Link } from "react-router-dom";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { Search, Moon, Sun, Plus, Download, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlignLeft, Moon, Sun } from "lucide-react";
 import { ColorLibraryData } from "@/types/colors";
-import { cn } from "@/lib/utils";
+import SampleTemplateButton from "./SampleTemplateButton";
 
 type NavbarProps = {
   colorLibraries: ColorLibraryData[];
   activeLibrary: number | null;
-  setActiveLibrary: (index: number) => void;
+  setActiveLibrary: (index: number | null) => void;
   openImportModal: () => void;
   onExport: (libraryId: number) => void;
   onDeleteLibrary: (libraryId: number) => void;
@@ -21,10 +28,6 @@ type NavbarProps = {
   darkMode: boolean;
   toggleDarkMode: () => void;
 };
-
-const COLOR_FAMILIES = [
-  "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Brown", "Gray", "Black", "White"
-];
 
 const Navbar = ({
   colorLibraries,
@@ -38,151 +41,129 @@ const Navbar = ({
   colorFamily,
   setColorFamily,
   darkMode,
-  toggleDarkMode
+  toggleDarkMode,
 }: NavbarProps) => {
-  const [isLibraryMenuOpen, setIsLibraryMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleLibrarySelect = (index: number) => {
+    setActiveLibrary(index);
+    setIsMenuOpen(false); // Close the menu after selecting a library
+  };
 
   return (
-    <nav className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm py-4">
-      <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-white mr-4">
-            TCM Digital Color Libraries
-          </h1>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleDarkMode}
-            className="ml-2"
-            aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+    <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-4">
+      <div className="container mx-auto px-4 flex items-center justify-between">
+        {/* Mobile Menu Button */}
+        <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <AlignLeft className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64">
+            <SheetHeader>
+              <SheetTitle>Color Libraries</SheetTitle>
+              <SheetDescription>
+                Select a library to view its colors.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-4">
+              {colorLibraries.map((library, index) => (
+                <Button
+                  key={library.id}
+                  variant={activeLibrary === index ? "default" : "ghost"}
+                  className="w-full justify-start mb-2"
+                  onClick={() => handleLibrarySelect(index)}
+                >
+                  {library.name}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                className="w-full justify-center"
+                onClick={() => {
+                  openImportModal();
+                  setIsMenuOpen(false);
+                }}
+              >
+                Import Colors
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Logo */}
+        <Link to="/" className="text-xl font-bold text-gray-800 dark:text-white">
+          Color Palette
+        </Link>
+
+        {/* Search Input */}
+        <Input
+          type="search"
+          placeholder="Search colors..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-sm md:block hidden"
+        />
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center space-x-4">
+          <select
+            className="px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+            value={colorFamily || ""}
+            onChange={(e) => setColorFamily(e.target.value === "" ? null : e.target.value)}
           >
+            <option value="">All Families</option>
+            <option value="red">Red</option>
+            <option value="orange">Orange</option>
+            <option value="yellow">Yellow</option>
+            <option value="green">Green</option>
+            <option value="teal">Teal</option>
+            <option value="blue">Blue</option>
+            <option value="purple">Purple</option>
+            <option value="pink">Pink</option>
+            <option value="brown">Brown</option>
+            <option value="gray">Gray</option>
+          </select>
+
+          {colorLibraries.map((library, index) => (
+            <Button
+              key={library.id}
+              variant={activeLibrary === index ? "default" : "ghost"}
+              onClick={() => setActiveLibrary(index)}
+            >
+              {library.name}
+            </Button>
+          ))}
+
+          <Button onClick={openImportModal}>Import Colors</Button>
+          <SampleTemplateButton />
+
+          {activeLibrary !== null && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => onExport(colorLibraries[activeLibrary].id)}
+              >
+                Export
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => onDeleteLibrary(colorLibraries[activeLibrary].id)}
+              >
+                Delete
+              </Button>
+            </>
+          )}
+
+          <Button variant="ghost" size="sm" onClick={toggleDarkMode}>
             {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
-        </div>
-
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <Popover open={isLibraryMenuOpen} onOpenChange={setIsLibraryMenuOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full md:w-auto">
-                {activeLibrary !== null && colorLibraries[activeLibrary]
-                  ? colorLibraries[activeLibrary].name
-                  : "Select Library"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0">
-              <div className="py-2">
-                {colorLibraries.length > 0 ? (
-                  colorLibraries.map((library, index) => (
-                    <div 
-                      key={library.id} 
-                      className="flex items-center justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                      onClick={() => {
-                        setActiveLibrary(index);
-                        setIsLibraryMenuOpen(false);
-                      }}
-                    >
-                      <span className={cn(
-                        "text-sm",
-                        activeLibrary === index ? "font-medium text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
-                      )}>
-                        {library.name}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onExport(library.id);
-                          }}
-                        >
-                          <Download className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-red-500" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteLibrary(library.id);
-                            setIsLibraryMenuOpen(false);
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
-                    No libraries available
-                  </div>
-                )}
-                <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start text-sm px-4 py-2 h-auto font-normal"
-                    onClick={() => {
-                      openImportModal();
-                      setIsLibraryMenuOpen(false);
-                    }}
-                  >
-                    <Plus className="h-3 w-3 mr-2" />
-                    Import New Library
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <div className="relative flex-1 md:max-w-xs">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search colors..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                {colorFamily || "All Families"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0">
-              <div className="py-2">
-                <div 
-                  className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                  onClick={() => setColorFamily(null)}
-                >
-                  <span className={cn(
-                    "text-sm",
-                    colorFamily === null ? "font-medium text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
-                  )}>
-                    All Colors
-                  </span>
-                </div>
-                {COLOR_FAMILIES.map((family) => (
-                  <div 
-                    key={family} 
-                    className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                    onClick={() => setColorFamily(family)}
-                  >
-                    <span className={cn(
-                      "text-sm",
-                      colorFamily === family ? "font-medium text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
-                    )}>
-                      {family}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
         </div>
       </div>
     </nav>
