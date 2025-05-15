@@ -7,7 +7,7 @@ import { ColorData } from "@/types/colors";
 import { Copy, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { rgbToLab } from "@/utils/colorUtils";
+import { rgbToLab, getChroma, getLightness } from "@/utils/colorUtils";
 
 type ColorCardProps = {
   color: ColorData;
@@ -20,6 +20,10 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps)
   const [detailOpen, setDetailOpen] = useState(false);
 
   const textColor = isLightColor(color.rgb) ? "text-gray-900" : "text-white";
+
+  // Get the main and sub family
+  const mainFamily = typeof color.family === 'object' ? color.family.main : color.family;
+  const subFamily = typeof color.family === 'object' ? color.family.sub : null;
 
   const copyToClipboard = (value: string, label: string) => {
     navigator.clipboard.writeText(value);
@@ -35,6 +39,10 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps)
 
   // Generate LAB values from RGB if not already available
   const labValues = color.lab || rgbToLab(color.rgb[0], color.rgb[1], color.rgb[2]);
+  
+  // Get chroma and lightness values for display
+  const chroma = getChroma(color.rgb);
+  const lightness = getLightness(color.rgb);
   
   return (
     <>
@@ -55,7 +63,12 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps)
         <div className="p-3 flex flex-col justify-between flex-grow">
           <div>
             <h3 className="font-medium text-gray-800 dark:text-gray-200">{color.name}</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{color.family}</p>
+            <div className="flex flex-col text-xs">
+              <span className="text-gray-500 dark:text-gray-400">{mainFamily}</span>
+              {subFamily && (
+                <span className="text-gray-400 dark:text-gray-500">{subFamily}</span>
+              )}
+            </div>
           </div>
           
           <div className="mt-2">
@@ -152,7 +165,21 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps)
                 <div className="space-y-2">
                   <div>
                     <span className="text-xs text-gray-500 dark:text-gray-400">Family:</span>
-                    <p className="text-sm">{color.family || "Uncategorized"}</p>
+                    <p className="text-sm">{mainFamily || "Uncategorized"}</p>
+                  </div>
+                  {subFamily && (
+                    <div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Sub-category:</span>
+                      <p className="text-sm">{subFamily}</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Saturation:</span>
+                    <p className="text-sm">{chroma}%</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Lightness:</span>
+                    <p className="text-sm">{lightness}%</p>
                   </div>
                   <div>
                     <span className="text-xs text-gray-500 dark:text-gray-400">HEX:</span>

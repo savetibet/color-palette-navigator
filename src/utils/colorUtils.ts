@@ -101,46 +101,154 @@ export const detectColorFormat = (colorStr: string): "hex" | "rgb" | "unknown" =
   return "unknown";
 };
 
-// Function to determine color family
-export const getColorFamily = (rgb: number[]): string => {
-  const [r, g, b] = rgb;
+// Convert RGB to HSL
+export const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
   
-  // Check for black, white, and gray first
-  if (max <= 30) return "Black";
-  if (min >= 200 && max - min <= 30) return "White";
-  if (max - min <= 30) return "Gray";
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    
+    if (max === r) {
+      h = (g - b) / d + (g < b ? 6 : 0);
+    } else if (max === g) {
+      h = (b - r) / d + 2;
+    } else {
+      h = (r - g) / d + 4;
+    }
+    
+    h /= 6;
+  }
   
-  // Calculate hue
-  let hue = 0;
-  if (max === r) {
-    hue = (g - b) / (max - min);
-  } else if (max === g) {
-    hue = 2.0 + (b - r) / (max - min);
+  // Convert to degrees and standard ranges
+  h = Math.round(h * 360);
+  s = Math.round(s * 100);
+  const lValue = Math.round(l * 100);
+  
+  return [h, s, lValue];
+};
+
+// Get chroma (saturation) value of a color
+export const getChroma = (rgb: number[]): number => {
+  const [r, g, b] = rgb;
+  const [_, s, _l] = rgbToHsl(r, g, b);
+  return s; // 0-100
+};
+
+// Get lightness value of a color
+export const getLightness = (rgb: number[]): number => {
+  const [r, g, b] = rgb;
+  const [_, _s, l] = rgbToHsl(r, g, b);
+  return l; // 0-100
+};
+
+// Improved function to determine color family with sub-categories
+export const getColorFamily = (rgb: number[]): { main: string; sub: string | null } => {
+  const [r, g, b] = rgb;
+  const [hue, saturation, lightness] = rgbToHsl(r, g, b);
+  
+  // Check for black, white, and gray first (neutrals)
+  if (lightness <= 10) return { main: "Black", sub: null };
+  if (lightness >= 90 && saturation <= 10) return { main: "White", sub: null };
+  if (saturation <= 10) return { main: "Gray", sub: getLightnessTone(lightness) };
+  
+  // Determine main color family based on HSL hue
+  let mainFamily: string;
+  let subCategory: string | null = null;
+  
+  // Use more accurate hue ranges for color families
+  if ((hue >= 0 && hue < 20) || (hue >= 340 && hue <= 360)) {
+    mainFamily = "Red";
+    subCategory = getRedSubcategory(hue, saturation, lightness);
+  } else if (hue >= 20 && hue < 50) {
+    mainFamily = "Orange";
+    subCategory = getOrangeSubcategory(hue, saturation, lightness);
+  } else if (hue >= 50 && hue < 70) {
+    mainFamily = "Yellow";
+    subCategory = getYellowSubcategory(hue, saturation, lightness);
+  } else if (hue >= 70 && hue < 160) {
+    mainFamily = "Green";
+    subCategory = getGreenSubcategory(hue, saturation, lightness);
+  } else if (hue >= 160 && hue < 250) {
+    mainFamily = "Blue";
+    subCategory = getBlueSubcategory(hue, saturation, lightness);
+  } else if (hue >= 250 && hue < 340) {
+    mainFamily = "Purple";
+    subCategory = getPurpleSubcategory(hue, saturation, lightness);
   } else {
-    hue = 4.0 + (r - g) / (max - min);
+    mainFamily = "Unknown";
   }
   
-  hue *= 60;
-  if (hue < 0) hue += 360;
-  
-  // Calculate saturation and value for more accurate family determination
-  const s = (max - min) / max;
-  const v = max / 255;
-  
-  // Determine color family based on HSV
-  if (s < 0.15) {
-    return "Gray";
+  return { main: mainFamily, sub: subCategory };
+};
+
+// Helper functions to determine subcategories
+const getRedSubcategory = (hue: number, saturation: number, lightness: number): string => {
+  if (hue >= 340 || hue <= 10) {
+    if (lightness < 30) return "Maroon";
+    if (lightness > 60) return "Pink";
+    if (saturation > 80) return "Scarlet";
+    return "Pure Red";
   }
-  
-  if (hue < 30 || hue >= 330) return "Red";
-  if (hue >= 30 && hue < 60) return "Orange";
-  if (hue >= 60 && hue < 90) return "Yellow";
-  if (hue >= 90 && hue < 150) return "Green";
-  if (hue >= 150 && hue < 210) return "Cyan";
-  if (hue >= 210 && hue < 270) return "Blue";
-  if (hue >= 270 && hue < 330) return "Purple";
-  
-  return "Unknown";
+  if (hue > 10 && hue < 20) {
+    return "Crimson";
+  }
+  return "Red";
+};
+
+const getOrangeSubcategory = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 30) return "Vermilion";
+  if (hue > 40) return "Amber";
+  if (lightness < 50) return "Burnt Orange";
+  if (lightness > 70) return "Light Orange";
+  return "Pure Orange";
+};
+
+const getYellowSubcategory = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 55) return "Golden Yellow";
+  if (hue > 65) return "Chartreuse";
+  if (lightness < 50) return "Mustard";
+  if (lightness > 80) return "Pastel Yellow";
+  return "Pure Yellow";
+};
+
+const getGreenSubcategory = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 90) return "Lime";
+  if (hue > 140) return "Teal";
+  if (hue > 120) return "Forest Green";
+  if (lightness < 30) return "Dark Green";
+  if (lightness > 70) return "Mint";
+  return "Pure Green";
+};
+
+const getBlueSubcategory = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 190) return "Turquoise";
+  if (hue > 220) return "Indigo";
+  if (lightness < 30) return "Navy";
+  if (lightness > 70) return "Sky Blue";
+  return "Pure Blue";
+};
+
+const getPurpleSubcategory = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 280) return "Violet";
+  if (hue > 320) return "Magenta";
+  if (lightness < 30) return "Deep Purple";
+  if (lightness > 70) return "Lavender";
+  return "Pure Purple";
+};
+
+const getLightnessTone = (lightness: number): string => {
+  if (lightness < 20) return "Dark Gray";
+  if (lightness > 80) return "Light Gray";
+  if (lightness > 50) return "Medium Light Gray";
+  if (lightness < 50) return "Medium Dark Gray";
+  return "Medium Gray";
 };

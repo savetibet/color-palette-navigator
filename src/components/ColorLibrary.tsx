@@ -2,10 +2,14 @@
 import { useState } from "react";
 import { ColorData, ColorLibraryData } from "@/types/colors";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, List, Grid2X2, GroupIcon } from "lucide-react";
 import ColorCard from "@/components/ColorCard";
 import AddColorModal from "@/components/AddColorModal";
 import { cn } from "@/lib/utils";
+import { Toggle } from "@/components/ui/toggle";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { getChroma, getLightness } from "@/utils/colorUtils";
 
 type ColorLibraryProps = {
   library: ColorLibraryData;
@@ -16,8 +20,9 @@ type ColorLibraryProps = {
 };
 
 type ViewMode = "grid" | "list";
-type SortMode = "name" | "family" | "hue" | "date";
+type SortMode = "name" | "family" | "hue" | "date" | "chroma" | "lightness";
 type DisplayFormat = "hex" | "rgb" | "lab" | "all";
+type GroupingMode = "none" | "family";
 
 const ColorLibrary = ({
   library,
@@ -30,6 +35,7 @@ const ColorLibrary = ({
   const [sortMode, setSortMode] = useState<SortMode>("date");
   const [displayFormat, setDisplayFormat] = useState<DisplayFormat>("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>("none");
 
   // Filter colors based on search query and selected family
   const filteredColors = library.colors.filter((color) => {
@@ -51,9 +57,12 @@ const ColorLibrary = ({
       case "name":
         return a.name.localeCompare(b.name);
       case "family":
-        return (a.family || "").localeCompare(b.family || "");
+        // Sort by main family first, then by sub-family
+        const aFamily = typeof a.family === 'string' ? a.family : '';
+        const bFamily = typeof b.family === 'string' ? b.family : '';
+        return aFamily.localeCompare(bFamily);
       case "hue":
-        // Simple hue comparison based on RGB (could be more sophisticated)
+        // Sort by hue using RGB values
         const getHue = (color: ColorData) => {
           const r = color.rgb[0];
           const g = color.rgb[1];
@@ -76,12 +85,64 @@ const ColorLibrary = ({
           return hue;
         };
         return getHue(a) - getHue(b);
+      case "chroma":
+        // Sort by chroma (saturation)
+        return getChroma(b.rgb) - getChroma(a.rgb);
+      case "lightness":
+        // Sort by lightness
+        return getLightness(b.rgb) - getLightness(a.rgb);
       case "date":
       default:
         // Using the id as a proxy for creation date order
         return parseInt(a.id) - parseInt(b.id);
     }
   });
+
+  // Group colors by family
+  const groupedColors = sortedColors.reduce<Record<string, ColorData[]>>((groups, color) => {
+    // Handle string or object family
+    let familyName = "Unknown";
+    if (typeof color.family === 'string') {
+      familyName = color.family;
+    } else if (color.family && typeof color.family === 'object') {
+      familyName = color.family.main;
+    }
+
+    if (!groups[familyName]) {
+      groups[familyName] = [];
+    }
+    groups[familyName].push(color);
+    return groups;
+  }, {});
+
+  // Sort the families by name
+  const sortedFamilies = Object.keys(groupedColors).sort();
+
+  // Function to further sort colors within each family
+  const sortColorsWithinFamily = (colors: ColorData[]) => {
+    return [...colors].sort((a, b) => {
+      // First sort by sub-family if available
+      const aSubFamily = typeof a.family === 'object' && a.family?.sub ? a.family.sub : '';
+      const bSubFamily = typeof b.family === 'object' && b.family?.sub ? b.family.sub : '';
+      
+      if (aSubFamily && bSubFamily) {
+        const subCompare = aSubFamily.localeCompare(bSubFamily);
+        if (subCompare !== 0) return subCompare;
+      }
+      
+      // Then sort by the selected sort mode
+      switch (sortMode) {
+        case "chroma":
+          return getChroma(b.rgb) - getChroma(a.rgb);
+        case "lightness":
+          return getLightness(b.rgb) - getLightness(a.rgb);
+        case "name":
+          return a.name.localeCompare(b.name);
+        default:
+          return parseInt(a.id) - parseInt(b.id);
+      }
+    });
+  };
 
   return (
     <div>
@@ -97,28 +158,24 @@ const ColorLibrary = ({
         </div>
         
         <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-          <div className="flex border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
-            <button
-              className={cn("px-3 py-1 text-sm", 
-                viewMode === "grid" 
-                  ? "bg-blue-500 text-white" 
-                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-              )}
-              onClick={() => setViewMode("grid")}
-            >
-              Grid
-            </button>
-            <button
-              className={cn("px-3 py-1 text-sm", 
-                viewMode === "list" 
-                  ? "bg-blue-500 text-white" 
-                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-              )}
-              onClick={() => setViewMode("list")}
-            >
-              List
-            </button>
-          </div>
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ViewMode)}>
+            <ToggleGroupItem value="grid" aria-label="Grid view">
+              <Grid2X2 className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="List view">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          
+          <Toggle 
+            pressed={groupingMode === "family"}
+            onPressedChange={() => setGroupingMode(groupingMode === "family" ? "none" : "family")}
+            aria-label="Group by family"
+            className="px-3"
+          >
+            <GroupIcon className="h-4 w-4 mr-1" />
+            Group
+          </Toggle>
           
           <select
             className="px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
@@ -129,6 +186,8 @@ const ColorLibrary = ({
             <option value="name">Sort by Name</option>
             <option value="family">Sort by Family</option>
             <option value="hue">Sort by Hue</option>
+            <option value="chroma">Sort by Saturation</option>
+            <option value="lightness">Sort by Lightness</option>
           </select>
           
           <select
@@ -159,6 +218,46 @@ const ColorLibrary = ({
             Add Color
           </Button>
         </div>
+      ) : groupingMode === "family" ? (
+        <Accordion type="multiple" className="w-full space-y-4">
+          {sortedFamilies.map((family) => (
+            <AccordionItem 
+              key={family} 
+              value={family}
+              className="border rounded-md overflow-hidden bg-white dark:bg-gray-800"
+            >
+              <AccordionTrigger className="px-4 py-2 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div className="flex items-center">
+                  <div 
+                    className="w-4 h-4 rounded-full mr-2" 
+                    style={{ backgroundColor: groupedColors[family][0].hex }}
+                  />
+                  <span>{family}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                    ({groupedColors[family].length})
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className={cn(
+                  viewMode === "grid" 
+                    ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4" 
+                    : "flex flex-col gap-2 p-4"
+                )}>
+                  {sortColorsWithinFamily(groupedColors[family]).map((color) => (
+                    <ColorCard
+                      key={color.id}
+                      color={color}
+                      displayFormat={displayFormat}
+                      viewMode={viewMode}
+                      onDelete={() => onDeleteColor(color.id)}
+                    />
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       ) : (
         <div className={cn(
           viewMode === "grid" 
