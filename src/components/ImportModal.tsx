@@ -9,8 +9,6 @@ import { ColorData } from "@/types/colors";
 import { hexToRgb, detectColorFormat } from "@/utils/colorUtils";
 import * as XLSX from "xlsx";
 
-<lov-add-dependency>xlsx@latest</lov-add-dependency>
-
 type ImportModalProps = {
   isOpen: boolean;
   onClose: () => void;

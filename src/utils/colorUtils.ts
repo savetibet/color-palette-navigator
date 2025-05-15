@@ -21,11 +21,11 @@ export const hexToRgb = (hex: string): number[] => {
 };
 
 // Function to convert RGB to LAB
-export const rgbToLab = (r: number, g: number, b: number): number[] => {
-  // Convert RGB to XYZ
-  r /= 255;
-  g /= 255;
-  b /= 255;
+export const rgbToLab = (rInput: number, gInput: number, bInput: number): number[] => {
+  // Convert RGB to XYZ - use let instead of const since we need to modify these values
+  let r = rInput / 255;
+  let g = gInput / 255;
+  let b = bInput / 255;
   
   r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
   g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
@@ -54,9 +54,9 @@ export const rgbToLab = (r: number, g: number, b: number): number[] => {
   
   const L = (116 * fy) - 16;
   const a = 500 * (fx - fy);
-  const b = 200 * (fy - fz);
+  const bValue = 200 * (fy - fz);
   
-  return [L, a, b];
+  return [L, a, bValue];
 };
 
 // Function to calculate Delta E (color difference) - CIE76 formula
