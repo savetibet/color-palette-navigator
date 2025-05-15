@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import ColorLibrary from "@/components/ColorLibrary";
 import ImportModal from "@/components/ImportModal";
 import Navbar from "@/components/Navbar";
