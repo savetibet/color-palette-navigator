@@ -1,12 +1,185 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import ColorLibrary from "@/components/ColorLibrary";
+import ImportModal from "@/components/ImportModal";
+import Navbar from "@/components/Navbar";
+import { ColorData, ColorLibraryData } from "@/types/colors";
+import { getColorFamily } from "@/utils/colorUtils";
+import { cn } from "@/lib/utils";
 
 const Index = () => {
+  const [colorLibraries, setColorLibraries] = useState<ColorLibraryData[]>([]);
+  const [activeLibrary, setActiveLibrary] = useState<number | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [colorFamily, setColorFamily] = useState<string | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Load saved libraries from localStorage on component mount
+  useEffect(() => {
+    const savedLibraries = localStorage.getItem("colorLibraries");
+    if (savedLibraries) {
+      try {
+        const parsed = JSON.parse(savedLibraries);
+        setColorLibraries(parsed);
+        if (parsed.length > 0 && activeLibrary === null) {
+          setActiveLibrary(0);
+        }
+      } catch (error) {
+        console.error("Error parsing saved libraries:", error);
+      }
+    }
+    
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem("darkMode");
+    if (savedTheme === "true") {
+      setDarkMode(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  // Save libraries to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("colorLibraries", JSON.stringify(colorLibraries));
+  }, [colorLibraries]);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    document.documentElement.classList.toggle("dark");
+    localStorage.setItem("darkMode", (!darkMode).toString());
+  };
+
+  const handleImport = (name: string, colors: ColorData[]) => {
+    // Process colors to add family classification
+    const processedColors = colors.map(color => ({
+      ...color,
+      family: getColorFamily(color.rgb)
+    }));
+    
+    const newLibrary: ColorLibraryData = {
+      id: Date.now(),
+      name,
+      colors: processedColors,
+      createdAt: new Date().toISOString()
+    };
+
+    setColorLibraries([...colorLibraries, newLibrary]);
+    setActiveLibrary(colorLibraries.length);
+    setImportModalOpen(false);
+    toast.success(`Imported ${processedColors.length} colors into "${name}"`);
+  };
+
+  const handleDeleteLibrary = (id: number) => {
+    if (confirm("Are you sure you want to delete this library? This action cannot be undone.")) {
+      const updatedLibraries = colorLibraries.filter(lib => lib.id !== id);
+      setColorLibraries(updatedLibraries);
+      
+      // Reset active library if the deleted one was active
+      if (activeLibrary !== null && colorLibraries[activeLibrary].id === id) {
+        setActiveLibrary(updatedLibraries.length > 0 ? 0 : null);
+      }
+      
+      toast.success("Library deleted successfully");
+    }
+  };
+
+  const handleColorDelete = (colorId: string) => {
+    if (activeLibrary === null) return;
+    
+    const updatedLibraries = [...colorLibraries];
+    const libraryIndex = colorLibraries.findIndex(lib => lib.id === colorLibraries[activeLibrary].id);
+    
+    updatedLibraries[libraryIndex] = {
+      ...updatedLibraries[libraryIndex],
+      colors: updatedLibraries[libraryIndex].colors.filter(color => color.id !== colorId)
+    };
+    
+    setColorLibraries(updatedLibraries);
+    toast.success("Color removed successfully");
+  };
+
+  const handleAddColor = (color: ColorData) => {
+    if (activeLibrary === null) {
+      toast.error("Please select or create a library first");
+      return;
+    }
+    
+    const updatedLibraries = [...colorLibraries];
+    const libraryIndex = colorLibraries.findIndex(lib => lib.id === colorLibraries[activeLibrary].id);
+    
+    updatedLibraries[libraryIndex] = {
+      ...updatedLibraries[libraryIndex],
+      colors: [...updatedLibraries[libraryIndex].colors, {
+        ...color,
+        id: Date.now().toString(),
+        family: getColorFamily(color.rgb)
+      }]
+    };
+    
+    setColorLibraries(updatedLibraries);
+    toast.success("Color added successfully");
+  };
+
+  const handleExport = (libraryId: number) => {
+    const library = colorLibraries.find(lib => lib.id === libraryId);
+    if (!library) return;
+    
+    // Placeholder for export functionality
+    toast.success(`Exported "${library.name}" library`);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className={cn("min-h-screen bg-gray-50 transition-colors duration-300", 
+                      darkMode && "dark bg-gray-900")}>
+      <Navbar 
+        colorLibraries={colorLibraries}
+        activeLibrary={activeLibrary}
+        setActiveLibrary={setActiveLibrary}
+        openImportModal={() => setImportModalOpen(true)}
+        onExport={handleExport}
+        onDeleteLibrary={handleDeleteLibrary}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        colorFamily={colorFamily}
+        setColorFamily={setColorFamily}
+        darkMode={darkMode}
+        toggleDarkMode={toggleDarkMode}
+      />
+      
+      <main className="container mx-auto px-4 py-6">
+        {activeLibrary !== null && colorLibraries[activeLibrary] ? (
+          <ColorLibrary 
+            library={colorLibraries[activeLibrary]}
+            searchQuery={searchQuery}
+            colorFamily={colorFamily}
+            onDeleteColor={handleColorDelete}
+            onAddColor={handleAddColor}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+            <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">
+              No Color Library Selected
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
+              Import a new color library or create one by adding colors manually.
+            </p>
+            <button
+              onClick={() => setImportModalOpen(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+            >
+              Import Colors
+            </button>
+          </div>
+        )}
+      </main>
+
+      <ImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImport={handleImport}
+      />
     </div>
   );
 };
