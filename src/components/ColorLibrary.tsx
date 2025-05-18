@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { ColorData, ColorLibraryData } from "@/types/colors";
+import { ColorData, ColorLibraryData, COLOR_FAMILIES } from "@/types/colors";
 import { Button } from "@/components/ui/button";
 import { Plus, List, Grid2X2, GroupIcon } from "lucide-react";
 import ColorCard from "@/components/ColorCard";
@@ -32,10 +31,10 @@ const ColorLibrary = ({
   onAddColor
 }: ColorLibraryProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [sortMode, setSortMode] = useState<SortMode>("date");
+  const [sortMode, setSortMode] = useState<SortMode>("family");
   const [displayFormat, setDisplayFormat] = useState<DisplayFormat>("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [groupingMode, setGroupingMode] = useState<GroupingMode>("none");
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>("family");  // Default to grouped by family
 
   // Filter colors based on search query and selected family
   const filteredColors = library.colors.filter((color) => {
@@ -98,7 +97,7 @@ const ColorLibrary = ({
     }
   });
 
-  // Group colors by family
+  // Group colors by family in a standardized order of families
   const groupedColors = sortedColors.reduce<Record<string, ColorData[]>>((groups, color) => {
     // Handle string or object family
     let familyName = "Unknown";
@@ -115,8 +114,29 @@ const ColorLibrary = ({
     return groups;
   }, {});
 
-  // Sort the families by name
-  const sortedFamilies = Object.keys(groupedColors).sort();
+  // Order families in a specific way (putting main color families first)
+  const orderedFamilies = [
+    COLOR_FAMILIES.RED,
+    COLOR_FAMILIES.ORANGE, 
+    COLOR_FAMILIES.YELLOW,
+    COLOR_FAMILIES.GREEN,
+    COLOR_FAMILIES.BLUE,
+    COLOR_FAMILIES.PURPLE,
+    COLOR_FAMILIES.BROWN,
+    COLOR_FAMILIES.GRAY,
+    COLOR_FAMILIES.BLACK_WHITE,
+    "Unknown"
+  ];
+
+  // Filter the families to only include ones we have colors for
+  const sortedFamilies = orderedFamilies.filter(
+    family => groupedColors[family] && groupedColors[family].length > 0
+  );
+
+  // Add any remaining families not in our predefined list
+  Object.keys(groupedColors)
+    .filter(family => !orderedFamilies.includes(family))
+    .forEach(family => sortedFamilies.push(family));
 
   // Function to further sort colors within each family
   const sortColorsWithinFamily = (colors: ColorData[]) => {
@@ -144,6 +164,16 @@ const ColorLibrary = ({
     });
   };
 
+  // Get a representative color for a family for visual display
+  const getFamilyRepresentativeColor = (familyColors: ColorData[]): string => {
+    // Sort by chroma (saturation) to get a vivid representative color
+    const sortedByChroma = [...familyColors].sort(
+      (a, b) => getChroma(b.rgb) - getChroma(a.rgb)
+    );
+    
+    return sortedByChroma[0].hex;
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -153,7 +183,8 @@ const ColorLibrary = ({
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
             {library.colors.length} colors in library • 
-            {filteredColors.length} colors displayed
+            {filteredColors.length} colors displayed • 
+            {sortedFamilies.length} color families
           </p>
         </div>
         
@@ -174,7 +205,7 @@ const ColorLibrary = ({
             className="px-3"
           >
             <GroupIcon className="h-4 w-4 mr-1" />
-            Group
+            Group by Family
           </Toggle>
           
           <select
@@ -182,9 +213,9 @@ const ColorLibrary = ({
             value={sortMode}
             onChange={(e) => setSortMode(e.target.value as SortMode)}
           >
-            <option value="date">Sort by Import Order</option>
-            <option value="name">Sort by Name</option>
             <option value="family">Sort by Family</option>
+            <option value="name">Sort by Name</option>
+            <option value="date">Sort by Import Order</option>
             <option value="hue">Sort by Hue</option>
             <option value="chroma">Sort by Saturation</option>
             <option value="lightness">Sort by Lightness</option>
@@ -219,7 +250,7 @@ const ColorLibrary = ({
           </Button>
         </div>
       ) : groupingMode === "family" ? (
-        <Accordion type="multiple" className="w-full space-y-4">
+        <Accordion type="multiple" className="w-full space-y-4" defaultValue={sortedFamilies}>
           {sortedFamilies.map((family) => (
             <AccordionItem 
               key={family} 
@@ -229,30 +260,47 @@ const ColorLibrary = ({
               <AccordionTrigger className="px-4 py-2 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700">
                 <div className="flex items-center">
                   <div 
-                    className="w-4 h-4 rounded-full mr-2" 
-                    style={{ backgroundColor: groupedColors[family][0].hex }}
+                    className="w-6 h-6 rounded-full mr-3 border border-gray-200" 
+                    style={{ backgroundColor: getFamilyRepresentativeColor(groupedColors[family]) }}
                   />
-                  <span>{family}</span>
+                  <span className="font-medium">{family} Family</span>
                   <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                    ({groupedColors[family].length})
+                    ({groupedColors[family].length} shades)
                   </span>
                 </div>
               </AccordionTrigger>
               <AccordionContent>
-                <div className={cn(
-                  viewMode === "grid" 
-                    ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4" 
-                    : "flex flex-col gap-2 p-4"
-                )}>
-                  {sortColorsWithinFamily(groupedColors[family]).map((color) => (
-                    <ColorCard
-                      key={color.id}
-                      color={color}
-                      displayFormat={displayFormat}
-                      viewMode={viewMode}
-                      onDelete={() => onDeleteColor(color.id)}
-                    />
-                  ))}
+                <div className="p-3 pb-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {Array.from(new Set(groupedColors[family]
+                      .map(color => typeof color.family === 'object' ? color.family.sub : null)
+                      .filter(Boolean)))
+                      .sort()
+                      .map((subFamily) => (
+                        <div 
+                          key={subFamily} 
+                          className="px-2 py-0.5 text-xs rounded-full bg-gray-100 
+                                    dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        >
+                          {subFamily}
+                        </div>
+                    ))}
+                  </div>
+                  <div className={cn(
+                    viewMode === "grid" 
+                      ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" 
+                      : "flex flex-col gap-2"
+                  )}>
+                    {sortColorsWithinFamily(groupedColors[family]).map((color) => (
+                      <ColorCard
+                        key={color.id}
+                        color={color}
+                        displayFormat={displayFormat}
+                        viewMode={viewMode}
+                        onDelete={() => onDeleteColor(color.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>

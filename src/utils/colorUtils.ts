@@ -150,105 +150,107 @@ export const getLightness = (rgb: number[]): number => {
   return l; // 0-100
 };
 
-// Improved function to determine color family with sub-categories
+// Enhanced function to determine color family with specific shade names
 export const getColorFamily = (rgb: number[]): { main: string; sub: string | null } => {
   const [r, g, b] = rgb;
   const [hue, saturation, lightness] = rgbToHsl(r, g, b);
   
-  // Check for black, white, and gray first (neutrals)
-  if (lightness <= 10) return { main: "Black", sub: null };
-  if (lightness >= 90 && saturation <= 10) return { main: "White", sub: null };
-  if (saturation <= 10) return { main: "Gray", sub: getLightnessTone(lightness) };
-  
-  // Determine main color family based on HSL hue
-  let mainFamily: string;
-  let subCategory: string | null = null;
-  
-  // Use more accurate hue ranges for color families
-  if ((hue >= 0 && hue < 20) || (hue >= 340 && hue <= 360)) {
-    mainFamily = "Red";
-    subCategory = getRedSubcategory(hue, saturation, lightness);
-  } else if (hue >= 20 && hue < 50) {
-    mainFamily = "Orange";
-    subCategory = getOrangeSubcategory(hue, saturation, lightness);
-  } else if (hue >= 50 && hue < 70) {
-    mainFamily = "Yellow";
-    subCategory = getYellowSubcategory(hue, saturation, lightness);
-  } else if (hue >= 70 && hue < 160) {
-    mainFamily = "Green";
-    subCategory = getGreenSubcategory(hue, saturation, lightness);
-  } else if (hue >= 160 && hue < 250) {
-    mainFamily = "Blue";
-    subCategory = getBlueSubcategory(hue, saturation, lightness);
-  } else if (hue >= 250 && hue < 340) {
-    mainFamily = "Purple";
-    subCategory = getPurpleSubcategory(hue, saturation, lightness);
-  } else {
-    mainFamily = "Unknown";
+  // Check for neutrals: black, white, and gray first
+  if (saturation <= 10) {
+    if (lightness <= 15) return { main: "Black/White", sub: "Black" };
+    if (lightness >= 85) return { main: "Black/White", sub: "White" };
+    return { main: "Gray", sub: getLightnessTone(lightness) };
   }
   
-  return { main: mainFamily, sub: subCategory };
+  // Determine main color family and specific shade based on HSL hue
+  if ((hue >= 355 || hue < 10)) {
+    return { main: "Red", sub: getRedShade(hue, saturation, lightness) };
+  } else if (hue >= 10 && hue < 40) {
+    return { main: "Orange", sub: getOrangeShade(hue, saturation, lightness) };
+  } else if (hue >= 40 && hue < 65) {
+    return { main: "Yellow", sub: getYellowShade(hue, saturation, lightness) };
+  } else if (hue >= 65 && hue < 160) {
+    return { main: "Green", sub: getGreenShade(hue, saturation, lightness) };
+  } else if (hue >= 160 && hue < 260) {
+    return { main: "Blue", sub: getBlueShade(hue, saturation, lightness) };
+  } else if (hue >= 260 && hue < 330) {
+    return { main: "Purple", sub: getPurpleShade(hue, saturation, lightness) };
+  } else if (hue >= 330 && hue < 355) {
+    return { main: "Red", sub: "Magenta" };
+  }
+  
+  // Brown requires special handling
+  if (saturation < 50 && lightness < 60 && lightness > 20) {
+    if (hue >= 20 && hue < 50) {
+      return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
+    }
+  }
+  
+  return { main: "Unknown", sub: null };
 };
 
-// Helper functions to determine subcategories
-const getRedSubcategory = (hue: number, saturation: number, lightness: number): string => {
-  if (hue >= 340 || hue <= 10) {
-    if (lightness < 30) return "Maroon";
-    if (lightness > 60) return "Pink";
-    if (saturation > 80) return "Scarlet";
-    return "Pure Red";
+// Helper functions for specific shade determination
+const getRedShade = (hue: number, saturation: number, lightness: number): string => {
+  if (lightness < 30) return "Maroon";
+  if (hue < 5) {
+    return lightness > 50 ? "Scarlet" : "Ruby";
   }
-  if (hue > 10 && hue < 20) {
-    return "Crimson";
+  if (hue >= 5) {
+    return lightness > 50 ? "Crimson" : "Cherry";
   }
   return "Red";
 };
 
-const getOrangeSubcategory = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 30) return "Vermilion";
-  if (hue > 40) return "Amber";
-  if (lightness < 50) return "Burnt Orange";
-  if (lightness > 70) return "Light Orange";
-  return "Pure Orange";
+const getOrangeShade = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 20) return "Vermilion";
+  if (hue > 30) return "Amber";
+  if (saturation < 60) return "Terracotta";
+  if (lightness > 60) return "Peach";
+  return "Tangerine";
 };
 
-const getYellowSubcategory = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 55) return "Golden Yellow";
-  if (hue > 65) return "Chartreuse";
-  if (lightness < 50) return "Mustard";
-  if (lightness > 80) return "Pastel Yellow";
-  return "Pure Yellow";
+const getYellowShade = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 50) return "Gold";
+  if (saturation < 50) return "Mustard";
+  if (lightness > 80) return "Lemon";
+  return "Canary";
 };
 
-const getGreenSubcategory = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 90) return "Lime";
+const getGreenShade = (hue: number, saturation: number, lightness: number): string => {
+  if (hue < 80) return "Chartreuse";
   if (hue > 140) return "Teal";
-  if (hue > 120) return "Forest Green";
-  if (lightness < 30) return "Dark Green";
+  if (hue > 100 && lightness < 40) return "Forest";
   if (lightness > 70) return "Mint";
-  return "Pure Green";
+  if (saturation < 50) return "Olive";
+  return "Emerald";
 };
 
-const getBlueSubcategory = (hue: number, saturation: number, lightness: number): string => {
+const getBlueShade = (hue: number, saturation: number, lightness: number): string => {
   if (hue < 190) return "Turquoise";
-  if (hue > 220) return "Indigo";
-  if (lightness < 30) return "Navy";
-  if (lightness > 70) return "Sky Blue";
-  return "Pure Blue";
+  if (hue > 225) return "Indigo";
+  if (lightness < 40) return "Navy";
+  if (lightness > 65) return "Sky";
+  return "Cobalt";
 };
 
-const getPurpleSubcategory = (hue: number, saturation: number, lightness: number): string => {
+const getPurpleShade = (hue: number, saturation: number, lightness: number): string => {
   if (hue < 280) return "Violet";
-  if (hue > 320) return "Magenta";
-  if (lightness < 30) return "Deep Purple";
-  if (lightness > 70) return "Lavender";
-  return "Pure Purple";
+  if (hue > 300) return "Magenta";
+  if (lightness < 40) return "Eggplant";
+  if (lightness > 70) return lightness > 85 ? "Lavender" : "Lilac";
+  return "Amethyst";
+};
+
+const getBrownShade = (hue: number, saturation: number, lightness: number): string => {
+  if (lightness < 30) return "Chocolate";
+  if (hue > 35) return "Tan";
+  if (saturation > 40) return "Sienna";
+  return "Coffee";
 };
 
 const getLightnessTone = (lightness: number): string => {
-  if (lightness < 20) return "Dark Gray";
-  if (lightness > 80) return "Light Gray";
-  if (lightness > 50) return "Medium Light Gray";
-  if (lightness < 50) return "Medium Dark Gray";
-  return "Medium Gray";
+  if (lightness < 20) return "Charcoal";
+  if (lightness > 80) return "Silver";
+  if (lightness > 50) return "Slate";
+  return "Graphite";
 };
