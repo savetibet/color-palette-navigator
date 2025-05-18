@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { ColorData, ColorLibraryData, COLOR_FAMILIES } from "@/types/colors";
 import { Button } from "@/components/ui/button";
@@ -9,11 +10,20 @@ import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { getChroma, getLightness } from "@/utils/colorUtils";
+import { toast } from "sonner";
+import ColorFormatSelector from "@/components/ColorFormatSelector";
+import ColorFilters from "@/components/ColorFilters";
+import ColorPicker from "@/components/ColorPicker";
+import SwatchAppearanceControls from "@/components/SwatchAppearanceControls";
+import ColorInfoDialog from "@/components/ColorInfoDialog";
+import ColorFamilyGuide from "@/components/ColorFamilyGuide";
 
 type ColorLibraryProps = {
   library: ColorLibraryData;
   searchQuery: string;
+  setSearchQuery: (query: string) => void;
   colorFamily: string | null;
+  setColorFamily: (family: string | null) => void;
   onDeleteColor: (id: string) => void;
   onAddColor: (color: ColorData) => void;
 };
@@ -26,7 +36,9 @@ type GroupingMode = "none" | "family";
 const ColorLibrary = ({
   library,
   searchQuery,
+  setSearchQuery,
   colorFamily,
+  setColorFamily,
   onDeleteColor,
   onAddColor
 }: ColorLibraryProps) => {
@@ -35,6 +47,13 @@ const ColorLibrary = ({
   const [displayFormat, setDisplayFormat] = useState<DisplayFormat>("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [groupingMode, setGroupingMode] = useState<GroupingMode>("family");  // Default to grouped by family
+  const [swatchSize, setSwatchSize] = useState(150);
+  const [selectedColor, setSelectedColor] = useState<ColorData | null>(null);
+  const [showColorInfo, setShowColorInfo] = useState(false);
+  const [showFamilyGuide, setShowFamilyGuide] = useState(false);
+
+  // Apply swatch size to CSS custom property
+  document.documentElement.style.setProperty('--swatch-size', `${swatchSize}px`);
 
   // Filter colors based on search query and selected family
   const filteredColors = library.colors.filter((color) => {
@@ -44,7 +63,8 @@ const ColorLibrary = ({
       : true;
       
     const matchesFamily = colorFamily
-      ? color.family === colorFamily
+      ? color.family === colorFamily || 
+        (typeof color.family === 'object' && color.family?.main === colorFamily)
       : true;
       
     return matchesSearch && matchesFamily;
@@ -57,8 +77,8 @@ const ColorLibrary = ({
         return a.name.localeCompare(b.name);
       case "family":
         // Sort by main family first, then by sub-family
-        const aFamily = typeof a.family === 'string' ? a.family : '';
-        const bFamily = typeof b.family === 'string' ? b.family : '';
+        const aFamily = typeof a.family === 'string' ? a.family : (a.family?.main || '');
+        const bFamily = typeof b.family === 'string' ? b.family : (b.family?.main || '');
         return aFamily.localeCompare(bFamily);
       case "hue":
         // Sort by hue using RGB values
@@ -183,6 +203,19 @@ const ColorLibrary = ({
         .filter(Boolean)
     ).size;
   };
+  
+  // Handle clicking on a color
+  const handleColorClick = (color: ColorData) => {
+    setSelectedColor(color);
+    setShowColorInfo(true);
+  };
+
+  // Handle copying a color to clipboard
+  const handleColorCopy = (color: ColorData, event: React.MouseEvent) => {
+    event.stopPropagation();
+    navigator.clipboard.writeText(color.hex);
+    toast.success(`Copied ${color.hex} to clipboard`);
+  };
 
   return (
     <div>
@@ -199,14 +232,13 @@ const ColorLibrary = ({
         </div>
         
         <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ViewMode)}>
-            <ToggleGroupItem value="grid" aria-label="Grid view">
-              <Grid2X2 className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="List view">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+          <Toggle 
+            pressed={showFamilyGuide}
+            onPressedChange={setShowFamilyGuide}
+            aria-label="Show color family guide"
+          >
+            Color Families
+          </Toggle>
           
           <Toggle 
             pressed={groupingMode === "family"}
@@ -221,35 +253,35 @@ const ColorLibrary = ({
             Group by Family
           </Toggle>
           
-          <select
-            className="px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-            value={sortMode}
-            onChange={(e) => setSortMode(e.target.value as SortMode)}
-          >
-            <option value="family">Sort by Family</option>
-            <option value="name">Sort by Name</option>
-            <option value="date">Sort by Import Order</option>
-            <option value="hue">Sort by Hue</option>
-            <option value="chroma">Sort by Saturation</option>
-            <option value="lightness">Sort by Lightness</option>
-          </select>
-          
-          <select
-            className="px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-            value={displayFormat}
-            onChange={(e) => setDisplayFormat(e.target.value as DisplayFormat)}
-          >
-            <option value="all">Show All Values</option>
-            <option value="hex">Show HEX</option>
-            <option value="rgb">Show RGB</option>
-            <option value="lab">Show LAB</option>
-          </select>
-          
-          <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            Add Color
-          </Button>
+          <ColorPicker onAddColor={onAddColor} />
         </div>
+      </div>
+      
+      {/* Color Family Guide */}
+      {showFamilyGuide && <ColorFamilyGuide />}
+      
+      {/* Filters and Controls */}
+      <ColorFilters 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        colorFamily={colorFamily}
+        setColorFamily={setColorFamily}
+        sortMode={sortMode}
+        setSortMode={setSortMode}
+      />
+      
+      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+        <ColorFormatSelector 
+          displayFormat={displayFormat} 
+          setDisplayFormat={setDisplayFormat} 
+        />
+        
+        <SwatchAppearanceControls
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          swatchSize={swatchSize}
+          setSwatchSize={setSwatchSize}
+        />
       </div>
       
       {sortedColors.length === 0 ? (
@@ -292,8 +324,7 @@ const ColorLibrary = ({
                       .map((subFamily) => (
                         <div 
                           key={subFamily} 
-                          className="px-2 py-0.5 text-xs rounded-full bg-gray-100 
-                                    dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                          className="shade-tag"
                         >
                           {subFamily}
                         </div>
@@ -311,6 +342,8 @@ const ColorLibrary = ({
                         displayFormat={displayFormat}
                         viewMode={viewMode}
                         onDelete={() => onDeleteColor(color.id)}
+                        onClick={() => handleColorClick(color)}
+                        onCopy={(e) => handleColorCopy(color, e)}
                       />
                     ))}
                   </div>
@@ -332,6 +365,8 @@ const ColorLibrary = ({
               displayFormat={displayFormat}
               viewMode={viewMode}
               onDelete={() => onDeleteColor(color.id)}
+              onClick={() => handleColorClick(color)}
+              onCopy={(e) => handleColorCopy(color, e)}
             />
           ))}
         </div>
@@ -341,6 +376,12 @@ const ColorLibrary = ({
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={onAddColor}
+      />
+      
+      <ColorInfoDialog 
+        color={selectedColor} 
+        isOpen={showColorInfo} 
+        setIsOpen={setShowColorInfo} 
       />
     </div>
   );

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -10,9 +11,11 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlignLeft, Moon, Sun } from "lucide-react";
+import { AlignLeft, Moon, Sun, Search, X, ImportIcon, ExportIcon } from "lucide-react";
 import { ColorLibraryData } from "@/types/colors";
 import SampleTemplateButton from "./SampleTemplateButton";
+import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { toast } from "sonner";
 
 type NavbarProps = {
   colorLibraries: ColorLibraryData[];
@@ -44,129 +47,193 @@ const Navbar = ({
   toggleDarkMode,
 }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const handleLibrarySelect = (index: number) => {
     setActiveLibrary(index);
     setIsMenuOpen(false); // Close the menu after selecting a library
   };
+  
+  // Collect all colors from all libraries for quick search
+  const allColors = colorLibraries.flatMap(library => 
+    library.colors.map(color => ({
+      ...color,
+      libraryName: library.name,
+      libraryId: library.id
+    }))
+  );
+
+  const handleColorSelect = (colorId: string, libraryId: number) => {
+    // Find the library index
+    const libraryIndex = colorLibraries.findIndex(lib => lib.id === libraryId);
+    if (libraryIndex !== -1) {
+      setActiveLibrary(libraryIndex);
+      
+      // Set search query to find this specific color
+      const color = colorLibraries[libraryIndex].colors.find(c => c.id === colorId);
+      if (color) {
+        setSearchQuery(color.name);
+        toast.info(`Found "${color.name}" in "${colorLibraries[libraryIndex].name}" library`);
+      }
+    }
+    setSearchOpen(false);
+  };
 
   return (
-    <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-4">
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        {/* Mobile Menu Button */}
-        <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              <AlignLeft className="h-5 w-5" />
+    <>
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-4 sticky top-0 z-10">
+        <div className="container mx-auto px-4 flex items-center justify-between">
+          {/* Mobile Menu Button */}
+          <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                <AlignLeft className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64">
+              <SheetHeader>
+                <SheetTitle>Color Libraries</SheetTitle>
+                <SheetDescription>
+                  Select a library to view its colors.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-4">
+                {colorLibraries.map((library, index) => (
+                  <Button
+                    key={library.id}
+                    variant={activeLibrary === index ? "default" : "ghost"}
+                    className="w-full justify-start mb-2"
+                    onClick={() => handleLibrarySelect(index)}
+                  >
+                    {library.name}
+                  </Button>
+                ))}
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      openImportModal();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <ImportIcon className="h-4 w-4 mr-2" />
+                    Import
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setSearchOpen(true)}
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    Search
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Logo */}
+          <Link to="/" className="text-xl font-bold text-gray-800 dark:text-white">
+            Color Palette
+          </Link>
+
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Quick Search Button */}
+            <Button variant="ghost" size="sm" onClick={() => setSearchOpen(true)}>
+              <Search className="h-4 w-4 mr-2" />
+              Quick Search
             </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64">
-            <SheetHeader>
-              <SheetTitle>Color Libraries</SheetTitle>
-              <SheetDescription>
-                Select a library to view its colors.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-4">
+
+            {/* Library Tabs */}
+            <div className="hidden xl:flex space-x-1">
               {colorLibraries.map((library, index) => (
                 <Button
                   key={library.id}
                   variant={activeLibrary === index ? "default" : "ghost"}
-                  className="w-full justify-start mb-2"
-                  onClick={() => handleLibrarySelect(index)}
+                  size="sm"
+                  onClick={() => setActiveLibrary(index)}
                 >
                   {library.name}
                 </Button>
               ))}
-              <Button
-                variant="outline"
-                className="w-full justify-center"
-                onClick={() => {
-                  openImportModal();
-                  setIsMenuOpen(false);
-                }}
-              >
-                Import Colors
-              </Button>
             </div>
-          </SheetContent>
-        </Sheet>
 
-        {/* Logo */}
-        <Link to="/" className="text-xl font-bold text-gray-800 dark:text-white">
-          Color Palette
-        </Link>
-
-        {/* Search Input */}
-        <Input
-          type="search"
-          placeholder="Search colors..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm md:block hidden"
-        />
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-4">
-          <select
-            className="px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-            value={colorFamily || ""}
-            onChange={(e) => setColorFamily(e.target.value === "" ? null : e.target.value)}
-          >
-            <option value="">All Families</option>
-            <option value="red">Red</option>
-            <option value="orange">Orange</option>
-            <option value="yellow">Yellow</option>
-            <option value="green">Green</option>
-            <option value="teal">Teal</option>
-            <option value="blue">Blue</option>
-            <option value="purple">Purple</option>
-            <option value="pink">Pink</option>
-            <option value="brown">Brown</option>
-            <option value="gray">Gray</option>
-          </select>
-
-          {colorLibraries.map((library, index) => (
-            <Button
-              key={library.id}
-              variant={activeLibrary === index ? "default" : "ghost"}
-              onClick={() => setActiveLibrary(index)}
-            >
-              {library.name}
+            <Button size="sm" onClick={openImportModal}>
+              <ImportIcon className="h-4 w-4 mr-1" />
+              Import
             </Button>
-          ))}
+            
+            <SampleTemplateButton />
 
-          <Button onClick={openImportModal}>Import Colors</Button>
-          <SampleTemplateButton />
+            {activeLibrary !== null && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onExport(colorLibraries[activeLibrary].id)}
+                >
+                  <ExportIcon className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </>
+            )}
 
-          {activeLibrary !== null && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => onExport(colorLibraries[activeLibrary].id)}
-              >
-                Export
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => onDeleteLibrary(colorLibraries[activeLibrary].id)}
-              >
-                Delete
-              </Button>
-            </>
-          )}
+            <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
+              {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+          </div>
 
-          <Button variant="ghost" size="sm" onClick={toggleDarkMode}>
-            {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+          {/* Mobile Actions */}
+          <div className="flex md:hidden items-center space-x-2">
+            <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
+              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Command Dialog for Quick Search */}
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput placeholder="Search all colors..." />
+        <CommandList className="max-h-[400px]">
+          <CommandEmpty>No colors found.</CommandEmpty>
+          {colorLibraries.map((library) => (
+            <CommandGroup key={library.id} heading={library.name}>
+              {library.colors
+                .filter(color => 
+                  color.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  color.hex.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .slice(0, 10)
+                .map(color => (
+                  <CommandItem 
+                    key={color.id}
+                    onSelect={() => handleColorSelect(color.id, library.id)}
+                    className="flex items-center"
+                  >
+                    <div 
+                      className="w-4 h-4 rounded-full mr-2 border border-gray-200 dark:border-gray-600" 
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    <span className="flex-1 mr-2">{color.name}</span>
+                    <span className="text-xs text-muted-foreground font-mono">{color.hex}</span>
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+          ))}
+        </CommandList>
+      </CommandDialog>
+    </>
   );
 };
 
