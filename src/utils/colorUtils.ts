@@ -150,16 +150,25 @@ export const getLightness = (rgb: number[]): number => {
   return l; // 0-100
 };
 
-// Enhanced function to determine color family with specific shade names
+// Improved function to determine color family with specific shade names
 export const getColorFamily = (rgb: number[]): { main: string; sub: string | null } => {
   const [r, g, b] = rgb;
   const [hue, saturation, lightness] = rgbToHsl(r, g, b);
   
-  // Check for neutrals: black, white, and gray first
-  if (saturation <= 10) {
+  // Enhanced thresholds for better detection
+  // First check for neutrals: black, white, and grays with very low saturation
+  if (saturation <= 15) {
     if (lightness <= 15) return { main: "Black/White", sub: "Black" };
     if (lightness >= 85) return { main: "Black/White", sub: "White" };
     return { main: "Gray", sub: getLightnessTone(lightness) };
+  }
+  
+  // Check for browns - these can be tricky as they span multiple hue regions
+  // Browns generally have low to medium saturation and low to medium lightness
+  if (saturation < 50 && lightness > 15 && lightness < 60) {
+    if ((hue >= 0 && hue <= 40) || (hue >= 355)) {
+      return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
+    }
   }
   
   // Determine main color family and specific shade based on HSL hue
@@ -179,38 +188,34 @@ export const getColorFamily = (rgb: number[]): { main: string; sub: string | nul
     return { main: "Red", sub: "Magenta" };
   }
   
-  // Brown requires special handling
-  if (saturation < 50 && lightness < 60 && lightness > 20) {
-    if (hue >= 20 && hue < 50) {
-      return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
-    }
-  }
-  
   return { main: "Unknown", sub: null };
 };
 
 // Helper functions for specific shade determination
 const getRedShade = (hue: number, saturation: number, lightness: number): string => {
   if (lightness < 30) return "Maroon";
-  if (hue < 5) {
-    return lightness > 50 ? "Scarlet" : "Ruby";
+  if (lightness < 45) return saturation > 75 ? "Ruby" : "Burgundy";
+  if (hue < 5 || hue >= 355) {
+    return lightness > 60 ? "Scarlet" : "Crimson";
   }
-  if (hue >= 5) {
-    return lightness > 50 ? "Crimson" : "Cherry";
-  }
-  return "Red";
+  if (lightness > 60) return "Cherry";
+  return "Cardinal";
 };
 
 const getOrangeShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 20) return "Vermilion";
+  if (hue < 20) return lightness < 50 ? "Vermilion" : "Coral";
   if (hue > 30) return "Amber";
   if (saturation < 60) return "Terracotta";
-  if (lightness > 60) return "Peach";
-  return "Tangerine";
+  if (lightness > 70) return "Peach";
+  if (lightness > 60) return "Tangerine";
+  return "Rust";
 };
 
 const getYellowShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 50) return "Gold";
+  if (hue < 50) {
+    if (lightness < 50) return "Ochre";
+    return saturation > 80 ? "Gold" : "Honey";
+  }
   if (saturation < 50) return "Mustard";
   if (lightness > 80) return "Lemon";
   return "Canary";
@@ -220,37 +225,50 @@ const getGreenShade = (hue: number, saturation: number, lightness: number): stri
   if (hue < 80) return "Chartreuse";
   if (hue > 140) return "Teal";
   if (hue > 100 && lightness < 40) return "Forest";
-  if (lightness > 70) return "Mint";
+  if (lightness > 70) return saturation < 50 ? "Sage" : "Mint";
   if (saturation < 50) return "Olive";
+  if (lightness < 40) return "Hunter";
+  if (hue < 100) return "Lime";
   return "Emerald";
 };
 
 const getBlueShade = (hue: number, saturation: number, lightness: number): string => {
   if (hue < 190) return "Turquoise";
-  if (hue > 225) return "Indigo";
-  if (lightness < 40) return "Navy";
-  if (lightness > 65) return "Sky";
-  return "Cobalt";
+  if (hue > 225) return lightness < 50 ? "Indigo" : "Ultramarine";
+  if (lightness < 30) return "Navy";
+  if (lightness > 70) return "Sky";
+  if (lightness > 50 && saturation > 60) return "Azure";
+  if (saturation > 70) return "Cobalt";
+  return "Royal";
 };
 
 const getPurpleShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 280) return "Violet";
+  if (hue < 280) {
+    return lightness < 50 ? "Violet" : "Periwinkle";
+  }
   if (hue > 300) return "Magenta";
-  if (lightness < 40) return "Eggplant";
-  if (lightness > 70) return lightness > 85 ? "Lavender" : "Lilac";
-  return "Amethyst";
+  if (lightness < 30) return "Eggplant";
+  if (lightness > 80) return "Lavender";
+  if (lightness > 65) return "Lilac";
+  if (saturation > 70) return "Amethyst";
+  return "Mauve";
 };
 
 const getBrownShade = (hue: number, saturation: number, lightness: number): string => {
-  if (lightness < 30) return "Chocolate";
-  if (hue > 35) return "Tan";
-  if (saturation > 40) return "Sienna";
-  return "Coffee";
+  if (lightness < 25) return "Chocolate";
+  if (lightness > 45) {
+    if (saturation < 30) return "Tan";
+    return "Caramel";
+  }
+  if (hue > 25) return "Sienna";
+  if (saturation > 40) return "Coffee";
+  return "Mocha";
 };
 
 const getLightnessTone = (lightness: number): string => {
   if (lightness < 20) return "Charcoal";
   if (lightness > 80) return "Silver";
-  if (lightness > 50) return "Slate";
+  if (lightness > 60) return "Ash";
+  if (lightness > 40) return "Slate";
   return "Graphite";
 };

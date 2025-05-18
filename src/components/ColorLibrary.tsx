@@ -174,6 +174,16 @@ const ColorLibrary = ({
     return sortedByChroma[0].hex;
   };
 
+  // Count shades within each family
+  const getFamilyShadeCount = (familyColors: ColorData[]): number => {
+    // Get unique sub-families
+    return new Set(
+      familyColors
+        .map(color => typeof color.family === 'object' ? color.family.sub : null)
+        .filter(Boolean)
+    ).size;
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -202,7 +212,10 @@ const ColorLibrary = ({
             pressed={groupingMode === "family"}
             onPressedChange={() => setGroupingMode(groupingMode === "family" ? "none" : "family")}
             aria-label="Group by family"
-            className="px-3"
+            className={cn(
+              "px-3",
+              groupingMode === "family" && "bg-blue-100 dark:bg-blue-900"
+            )}
           >
             <GroupIcon className="h-4 w-4 mr-1" />
             Group by Family
@@ -265,7 +278,7 @@ const ColorLibrary = ({
                   />
                   <span className="font-medium">{family} Family</span>
                   <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                    ({groupedColors[family].length} shades)
+                    ({groupedColors[family].length} colors • {getFamilyShadeCount(groupedColors[family])} shades)
                   </span>
                 </div>
               </AccordionTrigger>
