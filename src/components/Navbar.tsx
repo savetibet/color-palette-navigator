@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -11,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlignLeft, Moon, Sun, Search, X, ImportIcon, ExportIcon } from "lucide-react";
+import { AlignLeft, Moon, Sun, Search, X, ImportIcon, Share2 } from "lucide-react";
 import { ColorLibraryData } from "@/types/colors";
 import SampleTemplateButton from "./SampleTemplateButton";
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
@@ -179,7 +178,7 @@ const Navbar = ({
                   size="sm"
                   onClick={() => onExport(colorLibraries[activeLibrary].id)}
                 >
-                  <ExportIcon className="h-4 w-4 mr-1" />
+                  <Share2 className="h-4 w-4 mr-1" />
                   Export
                 </Button>
               </>
