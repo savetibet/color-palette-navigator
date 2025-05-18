@@ -179,7 +179,9 @@ const Index = () => {
           <ColorLibrary 
             library={colorLibraries[activeLibrary]}
             searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
             colorFamily={colorFamily}
+            setColorFamily={setColorFamily}
             onDeleteColor={handleColorDelete}
             onAddColor={handleAddColor}
           />

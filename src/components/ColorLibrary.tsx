@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ColorData, ColorLibraryData, COLOR_FAMILIES } from "@/types/colors";
 import { Button } from "@/components/ui/button";
@@ -21,11 +20,11 @@ import ColorFamilyGuide from "@/components/ColorFamilyGuide";
 type ColorLibraryProps = {
   library: ColorLibraryData;
   searchQuery: string;
-  setSearchQuery: (query: string) => void;
   colorFamily: string | null;
-  setColorFamily: (family: string | null) => void;
   onDeleteColor: (id: string) => void;
   onAddColor: (color: ColorData) => void;
+  setSearchQuery: (query: string) => void;
+  setColorFamily: (family: string | null) => void;
 };
 
 type ViewMode = "grid" | "list";
@@ -36,8 +35,8 @@ type GroupingMode = "none" | "family";
 const ColorLibrary = ({
   library,
   searchQuery,
-  setSearchQuery,
   colorFamily,
+  setSearchQuery,
   setColorFamily,
   onDeleteColor,
   onAddColor
