@@ -154,11 +154,11 @@ export const getColorFamily = (rgb: number[]): { main: string; sub: string | nul
   const [r, g, b] = rgb;
   const [hue, saturation, lightness] = rgbToHsl(r, g, b);
   
-  // Enhanced thresholds for better detection
+  // Enhanced thresholds for better detection using the user's requested categories
   // First check for neutrals: black, white, and grays with very low saturation
   if (saturation <= 15) {
-    if (lightness <= 15) return { main: "Black/White", sub: "Black" };
-    if (lightness >= 85) return { main: "Black/White", sub: "White" };
+    if (lightness <= 15) return { main: "Black", sub: "Black" };
+    if (lightness >= 85) return { main: "White", sub: "White" };
     return { main: "Gray", sub: getLightnessTone(lightness) };
   }
   
@@ -179,12 +179,14 @@ export const getColorFamily = (rgb: number[]): { main: string; sub: string | nul
     return { main: "Yellow", sub: getYellowShade(hue, saturation, lightness) };
   } else if (hue >= 65 && hue < 160) {
     return { main: "Green", sub: getGreenShade(hue, saturation, lightness) };
-  } else if (hue >= 160 && hue < 260) {
+  } else if (hue >= 160 && hue < 190) {
+    return { main: "Aqua/Teal", sub: getTealShade(hue, saturation, lightness) };
+  } else if (hue >= 190 && hue < 260) {
     return { main: "Blue", sub: getBlueShade(hue, saturation, lightness) };
   } else if (hue >= 260 && hue < 330) {
     return { main: "Purple", sub: getPurpleShade(hue, saturation, lightness) };
   } else if (hue >= 330 && hue < 355) {
-    return { main: "Red", sub: "Magenta" };
+    return { main: "Pink", sub: getPinkShade(hue, saturation, lightness) };
   }
   
   return { main: "Unknown", sub: null };
@@ -270,6 +272,14 @@ const getLightnessTone = (lightness: number): string => {
   if (lightness > 60) return "Ash";
   if (lightness > 40) return "Slate";
   return "Graphite";
+};
+
+// New function for Teal/Aqua shades
+const getTealShade = (hue: number, saturation: number, lightness: number): string => {
+  if (lightness < 30) return "Deep Teal";
+  if (lightness > 70) return "Light Aqua";
+  if (saturation < 40) return "Muted Teal";
+  return "Turquoise";
 };
 
 // CIELAB to RGB conversion
