@@ -59,6 +59,8 @@ const getRepresentativeColor = (family: string): string => {
       return "#3498db";
     case COLOR_FAMILIES.PURPLE:
       return "#9b59b6";
+    case COLOR_FAMILIES.PINK:
+      return "#ff69b4";
     case COLOR_FAMILIES.BROWN:
       return "#a0522d";
     case COLOR_FAMILIES.GRAY:
