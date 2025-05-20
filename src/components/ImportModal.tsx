@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,8 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
       try {
         // Generate preview data
         const data = await readExcelFile(selectedFile);
+        console.log("File loaded, preview data:", data.slice(0, 2));
+        
         if (data && data.length > 0) {
           // Only show first 5 rows in preview
           setPreviewData(data.slice(0, 5));
@@ -75,6 +78,7 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
     
     try {
       const data = await readExcelFile(file);
+      console.log("Processing file, sample data:", data.slice(0, 2));
       
       if (!data || data.length === 0) {
         toast.error("No data found in the file");
@@ -83,7 +87,7 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
       }
       
       const colorData = parseExcelData(data);
-      console.log("Parsed color data:", colorData);
+      console.log("Parsed color data:", colorData.slice(0, 2));
       
       if (colorData.length === 0) {
         toast.error("No valid color data found in the file");
@@ -109,19 +113,31 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
       
       reader.onload = (e) => {
         try {
-          const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: "binary" });
+          if (!e.target || !e.target.result) {
+            reject(new Error("Failed to read file"));
+            return;
+          }
+          
+          const data = e.target.result;
+          const workbook = XLSX.read(data, { type: "array" });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+          console.log("Parsed Excel data:", json.slice(0, 2));
           resolve(json);
         } catch (error) {
+          console.error("Error parsing Excel file:", error);
           reject(error);
         }
       };
       
-      reader.onerror = (error) => reject(error);
-      reader.readAsBinaryString(file);
+      reader.onerror = (error) => {
+        console.error("FileReader error:", error);
+        reject(error);
+      };
+      
+      // Changed from readAsBinaryString to readAsArrayBuffer for better compatibility
+      reader.readAsArrayBuffer(file);
     });
   };
   
@@ -141,11 +157,11 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
       for (const key in row) {
         const lowerKey = key.toLowerCase();
         if (lowerKey.includes('color') || lowerKey.includes('hex') || lowerKey.includes('rgb') || lowerKey === 'value') {
-          const value = row[key];
-          if (value && typeof value === 'string' && (value.startsWith('#') || value.startsWith('rgb'))) {
+          const value = String(row[key] || "").trim();
+          if (value && (value.startsWith('#') || value.startsWith('rgb'))) {
             colorValue = value;
             break;
-          } else if (value && typeof value === 'string' && value.match(/^[0-9a-f]{6}$/i)) {
+          } else if (value && value.match(/^[0-9a-f]{6}$/i)) {
             // If it's a hex without # prefix, add it
             colorValue = '#' + value;
             break;
@@ -156,11 +172,14 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
       // If no color value found, try to use any non-empty string field
       if (!colorValue) {
         for (const key in row) {
-          const value = row[key];
-          if (value && typeof value === 'string' && value.trim()) {
+          const value = String(row[key] || "").trim();
+          if (value) {
             // Try to detect if this string might be a color
-            if (value.match(/^[0-9a-f]{6}$/i)) {
-              colorValue = '#' + value;
+            if (value.match(/^#?[0-9a-f]{6}$/i)) {
+              colorValue = value.startsWith('#') ? value : '#' + value;
+              break;
+            } else if (value.toLowerCase().startsWith('rgb')) {
+              colorValue = value;
               break;
             }
           }
@@ -210,11 +229,11 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
         for (const key in row) {
           const lowerKey = key.toLowerCase();
           if (lowerKey === 'r' || lowerKey === 'red') {
-            r = parseInt(row[key]);
+            r = parseInt(String(row[key] || "0"));
           } else if (lowerKey === 'g' || lowerKey === 'green') {
-            g = parseInt(row[key]);
+            g = parseInt(String(row[key] || "0"));
           } else if (lowerKey === 'b' || lowerKey === 'blue') {
-            b = parseInt(row[key]);
+            b = parseInt(String(row[key] || "0"));
           }
         }
         
