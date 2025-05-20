@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ColorData, COLOR_FAMILIES } from "@/types/colors";
@@ -39,7 +38,8 @@ const ColorFamilyCards = ({ colors, grouped }: ColorFamilyCardsProps) => {
     COLOR_FAMILIES.PURPLE,
     COLOR_FAMILIES.BROWN,
     COLOR_FAMILIES.GRAY,
-    COLOR_FAMILIES.BLACK_WHITE,
+    COLOR_FAMILIES.BLACK,
+    COLOR_FAMILIES.WHITE,
     "Unknown"
   ];
 

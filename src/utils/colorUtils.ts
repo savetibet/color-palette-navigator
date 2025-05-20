@@ -1,3 +1,6 @@
+// Import the ColorData type from types/colors
+import { ColorData } from "@/types/colors";
+
 // Function to convert HEX to RGB
 export const hexToRgb = (hex: string): number[] => {
   // Remove # if present
@@ -253,6 +256,17 @@ const getPurpleShade = (hue: number, saturation: number, lightness: number): str
   if (lightness > 65) return "Lilac";
   if (saturation > 70) return "Amethyst";
   return "Mauve";
+};
+
+// Add the missing getPinkShade function
+const getPinkShade = (hue: number, saturation: number, lightness: number): string => {
+  if (lightness > 80) return "Light Pink";
+  if (saturation > 80) return "Hot Pink";
+  if (lightness < 50) return "Deep Pink";
+  if (saturation < 60) return "Blush";
+  if (hue > 345) return "Rose";
+  if (hue < 335) return "Magenta";
+  return "Fuchsia";
 };
 
 const getBrownShade = (hue: number, saturation: number, lightness: number): string => {

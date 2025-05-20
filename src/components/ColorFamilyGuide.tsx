@@ -63,8 +63,12 @@ const getRepresentativeColor = (family: string): string => {
       return "#a0522d";
     case COLOR_FAMILIES.GRAY:
       return "#7f8c8d";
-    case COLOR_FAMILIES.BLACK_WHITE:
+    case COLOR_FAMILIES.BLACK:
       return "#34495e";
+    case COLOR_FAMILIES.WHITE:
+      return "#ffffff";
+    case COLOR_FAMILIES.TEAL:
+      return "#00bcd4";
     default:
       return "#95a5a6";
   }
