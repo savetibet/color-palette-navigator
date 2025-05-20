@@ -272,12 +272,12 @@ const getLightnessTone = (lightness: number): string => {
   return "Graphite";
 };
 
-// CIELAB to RGB conversion (new function)
-export const labToRgb = (l: number, a: number, b: number): number[] => {
+// CIELAB to RGB conversion
+export const labToRgb = (l: number, a: number, bValue: number): number[] => {
   // LAB to XYZ
   const y = (l + 16) / 116;
   const x = a / 500 + y;
-  const z = y - b / 200;
+  const z = y - bValue / 200;
 
   const x3 = x * x * x;
   const y3 = y * y * y;
@@ -298,38 +298,38 @@ export const labToRgb = (l: number, a: number, b: number): number[] => {
 
   let r = x1 * 3.2406 + y1 * -1.5372 + z1 * -0.4986;
   let g = x1 * -0.9689 + y1 * 1.8758 + z1 * 0.0415;
-  let b = x1 * 0.0557 + y1 * -0.2040 + z1 * 1.0570;
+  let bColor = x1 * 0.0557 + y1 * -0.2040 + z1 * 1.0570;
 
   r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
   g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
-  b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
+  bColor = bColor > 0.0031308 ? 1.055 * Math.pow(bColor, 1 / 2.4) - 0.055 : 12.92 * bColor;
 
   // Clamp and convert to 0-255
   r = Math.max(0, Math.min(1, r)) * 255;
   g = Math.max(0, Math.min(1, g)) * 255;
-  b = Math.max(0, Math.min(1, b)) * 255;
+  bColor = Math.max(0, Math.min(1, bColor)) * 255;
 
-  return [Math.round(r), Math.round(g), Math.round(b)];
+  return [Math.round(r), Math.round(g), Math.round(bColor)];
 };
 
-// CIELAB to HEX conversion (new function)
-export const labToHex = (l: number, a: number, b: number): string => {
-  const rgb = labToRgb(l, a, b);
+// CIELAB to HEX conversion
+export const labToHex = (l: number, a: number, bValue: number): string => {
+  const rgb = labToRgb(l, a, bValue);
   return `#${((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1).toUpperCase()}`;
 };
 
-// Convert CIELAB values to a color object (new function)
-export const labToColorObject = (l: number, a: number, b: number, name: string = ""): ColorData => {
-  const rgb = labToRgb(l, a, b);
-  const hex = labToHex(l, a, b);
+// Convert CIELAB values to a color object
+export const labToColorObject = (l: number, a: number, bValue: number, name: string = ""): ColorData => {
+  const rgb = labToRgb(l, a, bValue);
+  const hex = labToHex(l, a, bValue);
   const family = getColorFamily(rgb);
   
   return {
     id: Date.now().toString(),
-    name: name || `Color L:${l.toFixed(1)} a:${a.toFixed(1)} b:${b.toFixed(1)}`,
+    name: name || `Color L:${l.toFixed(1)} a:${a.toFixed(1)} b:${bValue.toFixed(1)}`,
     hex: hex,
     rgb: rgb,
-    lab: [l, a, b],
+    lab: [l, a, bValue],
     family: family
   };
 };
