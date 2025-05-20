@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -9,6 +8,9 @@ import { ColorData, ColorLibraryData } from "@/types/colors";
 import { getColorFamily } from "@/utils/colorUtils";
 import { cn } from "@/lib/utils";
 import SampleTemplateButton from "@/components/SampleTemplateButton";
+import ColorFamilyCards from "@/components/ColorFamilyCards";
+import { Button } from "@/components/ui/button";
+import { Grid2X2, List, LayoutGrid } from "lucide-react";
 
 const Index = () => {
   const [colorLibraries, setColorLibraries] = useState<ColorLibraryData[]>([]);
@@ -17,6 +19,8 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [colorFamily, setColorFamily] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [viewMode, setViewMode] = useState<"library" | "cards">("library");
+  const [groupCards, setGroupCards] = useState(true);
 
   // Load saved libraries from localStorage on component mount
   useEffect(() => {
@@ -175,16 +179,73 @@ const Index = () => {
       />
       
       <main className="container mx-auto px-4 py-6">
+        {/* View Mode Toggle */}
+        {activeLibrary !== null && colorLibraries[activeLibrary] && (
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant={viewMode === "library" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("library")}
+                className="flex items-center gap-2"
+              >
+                <Grid2X2 className="w-4 h-4" />
+                <span>Library View</span>
+              </Button>
+              <Button 
+                variant={viewMode === "cards" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                className="flex items-center gap-2"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span>Cards View</span>
+              </Button>
+            </div>
+            
+            {viewMode === "cards" && (
+              <Button
+                variant={groupCards ? "default" : "outline"}
+                size="sm"
+                onClick={() => setGroupCards(!groupCards)}
+                className="flex items-center gap-2"
+              >
+                <List className="w-4 h-4" />
+                <span>{groupCards ? "Grouped" : "Ungrouped"}</span>
+              </Button>
+            )}
+          </div>
+        )}
+        
         {activeLibrary !== null && colorLibraries[activeLibrary] ? (
-          <ColorLibrary 
-            library={colorLibraries[activeLibrary]}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            colorFamily={colorFamily}
-            setColorFamily={setColorFamily}
-            onDeleteColor={handleColorDelete}
-            onAddColor={handleAddColor}
-          />
+          viewMode === "library" ? (
+            <ColorLibrary 
+              library={colorLibraries[activeLibrary]}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              colorFamily={colorFamily}
+              setColorFamily={setColorFamily}
+              onDeleteColor={handleColorDelete}
+              onAddColor={handleAddColor}
+            />
+          ) : (
+            <ColorFamilyCards
+              colors={colorLibraries[activeLibrary].colors.filter(color => {
+                const matchesSearch = searchQuery
+                  ? color.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    color.hex.toLowerCase().includes(searchQuery.toLowerCase())
+                  : true;
+                  
+                const matchesFamily = colorFamily
+                  ? color.family === colorFamily || 
+                    (typeof color.family === 'object' && color.family?.main === colorFamily)
+                  : true;
+                  
+                return matchesSearch && matchesFamily;
+              })}
+              grouped={groupCards}
+            />
+          )
         ) : (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center">
             <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">

@@ -82,7 +82,7 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
         return;
       }
       
-      const colorData = parseColorData(data);
+      const colorData = parseExcelData(data);
       console.log("Parsed color data:", colorData);
       
       if (colorData.length === 0) {
@@ -125,7 +125,7 @@ const ImportModal = ({ isOpen, onClose, onImport }: ImportModalProps) => {
     });
   };
   
-  const parseColorData = (data: any[]): ColorData[] => {
+  const parseExcelData = (data: any[]) => {
     // Show a sample of what's in the data
     console.log("Sample data from Excel:", data.slice(0, 2));
     

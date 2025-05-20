@@ -1,4 +1,3 @@
-
 // Function to convert HEX to RGB
 export const hexToRgb = (hex: string): number[] => {
   // Remove # if present
@@ -271,4 +270,66 @@ const getLightnessTone = (lightness: number): string => {
   if (lightness > 60) return "Ash";
   if (lightness > 40) return "Slate";
   return "Graphite";
+};
+
+// CIELAB to RGB conversion (new function)
+export const labToRgb = (l: number, a: number, b: number): number[] => {
+  // LAB to XYZ
+  const y = (l + 16) / 116;
+  const x = a / 500 + y;
+  const z = y - b / 200;
+
+  const x3 = x * x * x;
+  const y3 = y * y * y;
+  const z3 = z * z * z;
+
+  const xr = x3 > 0.008856 ? x3 : (x - 16 / 116) / 7.787;
+  const yr = y3 > 0.008856 ? y3 : (y - 16 / 116) / 7.787;
+  const zr = z3 > 0.008856 ? z3 : (z - 16 / 116) / 7.787;
+
+  // XYZ to RGB
+  const xn = 95.047 / 100;
+  const yn = 100.0 / 100;
+  const zn = 108.883 / 100;
+
+  const x1 = xr * xn;
+  const y1 = yr * yn;
+  const z1 = zr * zn;
+
+  let r = x1 * 3.2406 + y1 * -1.5372 + z1 * -0.4986;
+  let g = x1 * -0.9689 + y1 * 1.8758 + z1 * 0.0415;
+  let b = x1 * 0.0557 + y1 * -0.2040 + z1 * 1.0570;
+
+  r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
+  g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
+  b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
+
+  // Clamp and convert to 0-255
+  r = Math.max(0, Math.min(1, r)) * 255;
+  g = Math.max(0, Math.min(1, g)) * 255;
+  b = Math.max(0, Math.min(1, b)) * 255;
+
+  return [Math.round(r), Math.round(g), Math.round(b)];
+};
+
+// CIELAB to HEX conversion (new function)
+export const labToHex = (l: number, a: number, b: number): string => {
+  const rgb = labToRgb(l, a, b);
+  return `#${((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1).toUpperCase()}`;
+};
+
+// Convert CIELAB values to a color object (new function)
+export const labToColorObject = (l: number, a: number, b: number, name: string = ""): ColorData => {
+  const rgb = labToRgb(l, a, b);
+  const hex = labToHex(l, a, b);
+  const family = getColorFamily(rgb);
+  
+  return {
+    id: Date.now().toString(),
+    name: name || `Color L:${l.toFixed(1)} a:${a.toFixed(1)} b:${b.toFixed(1)}`,
+    hex: hex,
+    rgb: rgb,
+    lab: [l, a, b],
+    family: family
+  };
 };
