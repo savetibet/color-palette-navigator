@@ -1,7 +1,7 @@
 
 import React from "react";
-import { ColorFormatSelector } from "@/components/ColorFormatSelector";
-import { SwatchAppearanceControls } from "@/components/SwatchAppearanceControls";
+import ColorFormatSelector from "@/components/ColorFormatSelector";
+import SwatchAppearanceControls from "@/components/SwatchAppearanceControls";
 
 type ColorSortControlsProps = {
   displayFormat: "hex" | "rgb" | "lab" | "all";
