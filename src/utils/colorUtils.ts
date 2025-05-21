@@ -1,3 +1,6 @@
+
+import { ColorData } from '@/types/colors';
+
 // Function to convert HEX to RGB
 export const hexToRgb = (hex: string): number[] => {
   // Remove # if present
