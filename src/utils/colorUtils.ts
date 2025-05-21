@@ -1,5 +1,3 @@
-// Import the ColorData type from types/colors
-import { ColorData } from "@/types/colors";
 
 // Function to convert HEX to RGB
 export const hexToRgb = (hex: string): number[] => {
@@ -152,25 +150,16 @@ export const getLightness = (rgb: number[]): number => {
   return l; // 0-100
 };
 
-// Improved function to determine color family with specific shade names
+// Enhanced function to determine color family with specific shade names
 export const getColorFamily = (rgb: number[]): { main: string; sub: string | null } => {
   const [r, g, b] = rgb;
   const [hue, saturation, lightness] = rgbToHsl(r, g, b);
   
-  // Enhanced thresholds for better detection using the user's requested categories
-  // First check for neutrals: black, white, and grays with very low saturation
-  if (saturation <= 15) {
-    if (lightness <= 15) return { main: "Black", sub: "Black" };
-    if (lightness >= 85) return { main: "White", sub: "White" };
+  // Check for neutrals: black, white, and gray first
+  if (saturation <= 10) {
+    if (lightness <= 15) return { main: "Black/White", sub: "Black" };
+    if (lightness >= 85) return { main: "Black/White", sub: "White" };
     return { main: "Gray", sub: getLightnessTone(lightness) };
-  }
-  
-  // Check for browns - these can be tricky as they span multiple hue regions
-  // Browns generally have low to medium saturation and low to medium lightness
-  if (saturation < 50 && lightness > 15 && lightness < 60) {
-    if ((hue >= 0 && hue <= 40) || (hue >= 355)) {
-      return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
-    }
   }
   
   // Determine main color family and specific shade based on HSL hue
@@ -182,14 +171,19 @@ export const getColorFamily = (rgb: number[]): { main: string; sub: string | nul
     return { main: "Yellow", sub: getYellowShade(hue, saturation, lightness) };
   } else if (hue >= 65 && hue < 160) {
     return { main: "Green", sub: getGreenShade(hue, saturation, lightness) };
-  } else if (hue >= 160 && hue < 190) {
-    return { main: "Aqua/Teal", sub: getTealShade(hue, saturation, lightness) };
-  } else if (hue >= 190 && hue < 260) {
+  } else if (hue >= 160 && hue < 260) {
     return { main: "Blue", sub: getBlueShade(hue, saturation, lightness) };
   } else if (hue >= 260 && hue < 330) {
     return { main: "Purple", sub: getPurpleShade(hue, saturation, lightness) };
   } else if (hue >= 330 && hue < 355) {
-    return { main: "Pink", sub: getPinkShade(hue, saturation, lightness) };
+    return { main: "Red", sub: "Magenta" };
+  }
+  
+  // Brown requires special handling
+  if (saturation < 50 && lightness < 60 && lightness > 20) {
+    if (hue >= 20 && hue < 50) {
+      return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
+    }
   }
   
   return { main: "Unknown", sub: null };
@@ -198,28 +192,25 @@ export const getColorFamily = (rgb: number[]): { main: string; sub: string | nul
 // Helper functions for specific shade determination
 const getRedShade = (hue: number, saturation: number, lightness: number): string => {
   if (lightness < 30) return "Maroon";
-  if (lightness < 45) return saturation > 75 ? "Ruby" : "Burgundy";
-  if (hue < 5 || hue >= 355) {
-    return lightness > 60 ? "Scarlet" : "Crimson";
+  if (hue < 5) {
+    return lightness > 50 ? "Scarlet" : "Ruby";
   }
-  if (lightness > 60) return "Cherry";
-  return "Cardinal";
+  if (hue >= 5) {
+    return lightness > 50 ? "Crimson" : "Cherry";
+  }
+  return "Red";
 };
 
 const getOrangeShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 20) return lightness < 50 ? "Vermilion" : "Coral";
+  if (hue < 20) return "Vermilion";
   if (hue > 30) return "Amber";
   if (saturation < 60) return "Terracotta";
-  if (lightness > 70) return "Peach";
-  if (lightness > 60) return "Tangerine";
-  return "Rust";
+  if (lightness > 60) return "Peach";
+  return "Tangerine";
 };
 
 const getYellowShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 50) {
-    if (lightness < 50) return "Ochre";
-    return saturation > 80 ? "Gold" : "Honey";
-  }
+  if (hue < 50) return "Gold";
   if (saturation < 50) return "Mustard";
   if (lightness > 80) return "Lemon";
   return "Canary";
@@ -229,131 +220,37 @@ const getGreenShade = (hue: number, saturation: number, lightness: number): stri
   if (hue < 80) return "Chartreuse";
   if (hue > 140) return "Teal";
   if (hue > 100 && lightness < 40) return "Forest";
-  if (lightness > 70) return saturation < 50 ? "Sage" : "Mint";
+  if (lightness > 70) return "Mint";
   if (saturation < 50) return "Olive";
-  if (lightness < 40) return "Hunter";
-  if (hue < 100) return "Lime";
   return "Emerald";
 };
 
 const getBlueShade = (hue: number, saturation: number, lightness: number): string => {
   if (hue < 190) return "Turquoise";
-  if (hue > 225) return lightness < 50 ? "Indigo" : "Ultramarine";
-  if (lightness < 30) return "Navy";
-  if (lightness > 70) return "Sky";
-  if (lightness > 50 && saturation > 60) return "Azure";
-  if (saturation > 70) return "Cobalt";
-  return "Royal";
+  if (hue > 225) return "Indigo";
+  if (lightness < 40) return "Navy";
+  if (lightness > 65) return "Sky";
+  return "Cobalt";
 };
 
 const getPurpleShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 280) {
-    return lightness < 50 ? "Violet" : "Periwinkle";
-  }
+  if (hue < 280) return "Violet";
   if (hue > 300) return "Magenta";
-  if (lightness < 30) return "Eggplant";
-  if (lightness > 80) return "Lavender";
-  if (lightness > 65) return "Lilac";
-  if (saturation > 70) return "Amethyst";
-  return "Mauve";
-};
-
-// Add the missing getPinkShade function
-const getPinkShade = (hue: number, saturation: number, lightness: number): string => {
-  if (lightness > 80) return "Light Pink";
-  if (saturation > 80) return "Hot Pink";
-  if (lightness < 50) return "Deep Pink";
-  if (saturation < 60) return "Blush";
-  if (hue > 345) return "Rose";
-  if (hue < 335) return "Magenta";
-  return "Fuchsia";
+  if (lightness < 40) return "Eggplant";
+  if (lightness > 70) return lightness > 85 ? "Lavender" : "Lilac";
+  return "Amethyst";
 };
 
 const getBrownShade = (hue: number, saturation: number, lightness: number): string => {
-  if (lightness < 25) return "Chocolate";
-  if (lightness > 45) {
-    if (saturation < 30) return "Tan";
-    return "Caramel";
-  }
-  if (hue > 25) return "Sienna";
-  if (saturation > 40) return "Coffee";
-  return "Mocha";
+  if (lightness < 30) return "Chocolate";
+  if (hue > 35) return "Tan";
+  if (saturation > 40) return "Sienna";
+  return "Coffee";
 };
 
 const getLightnessTone = (lightness: number): string => {
   if (lightness < 20) return "Charcoal";
   if (lightness > 80) return "Silver";
-  if (lightness > 60) return "Ash";
-  if (lightness > 40) return "Slate";
+  if (lightness > 50) return "Slate";
   return "Graphite";
-};
-
-// New function for Teal/Aqua shades
-const getTealShade = (hue: number, saturation: number, lightness: number): string => {
-  if (lightness < 30) return "Deep Teal";
-  if (lightness > 70) return "Light Aqua";
-  if (saturation < 40) return "Muted Teal";
-  return "Turquoise";
-};
-
-// CIELAB to RGB conversion
-export const labToRgb = (l: number, a: number, bValue: number): number[] => {
-  // LAB to XYZ
-  const y = (l + 16) / 116;
-  const x = a / 500 + y;
-  const z = y - bValue / 200;
-
-  const x3 = x * x * x;
-  const y3 = y * y * y;
-  const z3 = z * z * z;
-
-  const xr = x3 > 0.008856 ? x3 : (x - 16 / 116) / 7.787;
-  const yr = y3 > 0.008856 ? y3 : (y - 16 / 116) / 7.787;
-  const zr = z3 > 0.008856 ? z3 : (z - 16 / 116) / 7.787;
-
-  // XYZ to RGB
-  const xn = 95.047 / 100;
-  const yn = 100.0 / 100;
-  const zn = 108.883 / 100;
-
-  const x1 = xr * xn;
-  const y1 = yr * yn;
-  const z1 = zr * zn;
-
-  let r = x1 * 3.2406 + y1 * -1.5372 + z1 * -0.4986;
-  let g = x1 * -0.9689 + y1 * 1.8758 + z1 * 0.0415;
-  let bColor = x1 * 0.0557 + y1 * -0.2040 + z1 * 1.0570;
-
-  r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
-  g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
-  bColor = bColor > 0.0031308 ? 1.055 * Math.pow(bColor, 1 / 2.4) - 0.055 : 12.92 * bColor;
-
-  // Clamp and convert to 0-255
-  r = Math.max(0, Math.min(1, r)) * 255;
-  g = Math.max(0, Math.min(1, g)) * 255;
-  bColor = Math.max(0, Math.min(1, bColor)) * 255;
-
-  return [Math.round(r), Math.round(g), Math.round(bColor)];
-};
-
-// CIELAB to HEX conversion
-export const labToHex = (l: number, a: number, bValue: number): string => {
-  const rgb = labToRgb(l, a, bValue);
-  return `#${((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1).toUpperCase()}`;
-};
-
-// Convert CIELAB values to a color object
-export const labToColorObject = (l: number, a: number, bValue: number, name: string = ""): ColorData => {
-  const rgb = labToRgb(l, a, bValue);
-  const hex = labToHex(l, a, bValue);
-  const family = getColorFamily(rgb);
-  
-  return {
-    id: Date.now().toString(),
-    name: name || `Color L:${l.toFixed(1)} a:${a.toFixed(1)} b:${bValue.toFixed(1)}`,
-    hex: hex,
-    rgb: rgb,
-    lab: [l, a, bValue],
-    family: family
-  };
 };

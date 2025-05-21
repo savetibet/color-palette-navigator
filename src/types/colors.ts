@@ -1,3 +1,4 @@
+
 export interface ColorFamily {
   main: string;
   sub: string | null;
@@ -27,12 +28,9 @@ export const COLOR_FAMILIES = {
   GREEN: "Green", 
   BLUE: "Blue",
   PURPLE: "Purple",
-  PINK: "Pink",
   BROWN: "Brown",
   GRAY: "Gray",
-  BLACK: "Black",
-  WHITE: "White",
-  TEAL: "Aqua/Teal"
+  BLACK_WHITE: "Black/White"
 };
 
 // Detailed color shades by family
@@ -47,16 +45,13 @@ export const COLOR_SHADES = {
     "Canary", "Gold", "Lemon", "Mustard", "Ochre", "Saffron", "Amber", "Chartreuse", "Flaxen", "Honey"
   ],
   [COLOR_FAMILIES.GREEN]: [
-    "Emerald", "Jade", "Forest", "Lime", "Olive", "Mint", "Sage", "Hunter", "Seafoam"
+    "Emerald", "Jade", "Forest", "Lime", "Olive", "Mint", "Sage", "Teal", "Hunter", "Seafoam"
   ],
   [COLOR_FAMILIES.BLUE]: [
-    "Azure", "Cobalt", "Cyan", "Indigo", "Navy", "Royal", "Sky", "Ultramarine", "Sapphire"
+    "Azure", "Cobalt", "Cyan", "Indigo", "Navy", "Royal", "Sky", "Turquoise", "Ultramarine", "Sapphire"
   ],
   [COLOR_FAMILIES.PURPLE]: [
-    "Amethyst", "Lavender", "Lilac", "Mauve", "Plum", "Violet", "Orchid", "Periwinkle", "Eggplant"
-  ],
-  [COLOR_FAMILIES.PINK]: [
-    "Rose", "Hot Pink", "Light Pink", "Deep Pink", "Salmon", "Magenta", "Fuchsia", "Blush", "Bubblegum"
+    "Amethyst", "Lavender", "Lilac", "Magenta", "Mauve", "Plum", "Violet", "Orchid", "Periwinkle", "Eggplant"
   ],
   [COLOR_FAMILIES.BROWN]: [
     "Chocolate", "Coffee", "Mocha", "Mahogany", "Caramel", "Sepia", "Sienna", "Tan", "Umber", "Walnut"
@@ -64,13 +59,7 @@ export const COLOR_SHADES = {
   [COLOR_FAMILIES.GRAY]: [
     "Ash", "Charcoal", "Pewter", "Silver", "Slate", "Smoke", "Steel", "Stone", "Iron", "Graphite"
   ],
-  [COLOR_FAMILIES.BLACK]: [
-    "Ebony", "Jet", "Obsidian", "Onyx", "Raven"
-  ],
-  [COLOR_FAMILIES.WHITE]: [
-    "Ivory", "Pearl", "Alabaster", "Chalk", "Snow"
-  ],
-  [COLOR_FAMILIES.TEAL]: [
-    "Turquoise", "Deep Teal", "Light Aqua", "Muted Teal", "Cyan", "Seafoam", "Aquamarine", "Marine"
+  [COLOR_FAMILIES.BLACK_WHITE]: [
+    "Ebony", "Jet", "Obsidian", "Onyx", "Raven", "Ivory", "Pearl", "Alabaster", "Chalk", "Snow"
   ]
 };

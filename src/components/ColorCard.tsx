@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,11 +14,9 @@ type ColorCardProps = {
   displayFormat: "hex" | "rgb" | "lab" | "all";
   viewMode: "grid" | "list";
   onDelete: () => void;
-  onClick?: () => void;
-  onCopy?: (e: React.MouseEvent) => void;
 };
 
-const ColorCard = ({ color, displayFormat, viewMode, onDelete, onClick, onCopy }: ColorCardProps) => {
+const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps) => {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const textColor = isLightColor(color.rgb) ? "text-gray-900" : "text-white";
@@ -52,7 +51,7 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete, onClick, onCopy }
           "overflow-hidden transition-shadow hover:shadow-md",
           viewMode === "list" ? "flex" : ""
         )}
-        onClick={() => onClick ? onClick() : setDetailOpen(true)}
+        onClick={() => setDetailOpen(true)}
       >
         <div 
           className={cn(
@@ -83,11 +82,7 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete, onClick, onCopy }
                   className="h-5 w-5" 
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (onCopy) {
-                      onCopy(e);
-                    } else {
-                      copyToClipboard(color.hex, "HEX value");
-                    }
+                    copyToClipboard(color.hex, "HEX value");
                   }}
                 >
                   <Copy className="h-3 w-3" />
