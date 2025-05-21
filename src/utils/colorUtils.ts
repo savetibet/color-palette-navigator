@@ -1,4 +1,3 @@
-
 // Function to convert HEX to RGB
 export const hexToRgb = (hex: string): number[] => {
   // Remove # if present
@@ -253,4 +252,181 @@ const getLightnessTone = (lightness: number): string => {
   if (lightness > 80) return "Silver";
   if (lightness > 50) return "Slate";
   return "Graphite";
+};
+
+// Function to parse RGB string into RGB array
+export const parseRgbString = (rgbStr: string): number[] => {
+  const matches = rgbStr.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (matches) {
+    return [
+      parseInt(matches[1], 10),
+      parseInt(matches[2], 10),
+      parseInt(matches[3], 10)
+    ];
+  }
+  return [0, 0, 0]; // Default black if parsing fails
+};
+
+// Function to calculate Euclidean distance between two RGB colors
+export const rgbDistance = (rgb1: number[], rgb2: number[]): number => {
+  return Math.sqrt(
+    Math.pow(rgb2[0] - rgb1[0], 2) +
+    Math.pow(rgb2[1] - rgb1[1], 2) +
+    Math.pow(rgb2[2] - rgb1[2], 2)
+  );
+};
+
+// Function to find similar colors by RGB
+export const findSimilarColors = (
+  targetColor: number[], 
+  colorLibrary: ColorData[], 
+  limit: number = 10
+): ColorData[] => {
+  // Calculate distances
+  const colorsWithDistance = colorLibrary.map(color => ({
+    color,
+    distance: rgbDistance(targetColor, color.rgb)
+  }));
+  
+  // Sort by distance and return the closest matches
+  return colorsWithDistance
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit)
+    .map(item => item.color);
+};
+
+// Function to find similar colors by LAB (more perceptually accurate)
+export const findSimilarColorsByLab = (
+  targetLab: number[], 
+  colorLibrary: ColorData[], 
+  limit: number = 10
+): ColorData[] => {
+  // Calculate distances
+  const colorsWithDistance = colorLibrary.map(color => {
+    // Convert color to LAB if it doesn't have LAB values
+    const lab = color.lab || rgbToLab(color.rgb[0], color.rgb[1], color.rgb[2]);
+    return {
+      color,
+      distance: deltaE(targetLab, lab)
+    };
+  });
+  
+  // Sort by distance and return the closest matches
+  return colorsWithDistance
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit)
+    .map(item => item.color);
+};
+
+// K-means clustering to identify color families by RGB similarity
+export const kMeansClusterColors = (colors: ColorData[], k: number = 9, iterations: number = 10): { [key: string]: ColorData[] } => {
+  if (colors.length === 0) return {};
+  if (colors.length <= k) {
+    // If there are fewer colors than clusters, just put each color in its own cluster
+    return colors.reduce((acc, color, index) => {
+      acc[`Cluster ${index + 1}`] = [color];
+      return acc;
+    }, {} as { [key: string]: ColorData[] });
+  }
+
+  // Get random initial centroids
+  const getRandomCentroids = () => {
+    const centroids: number[][] = [];
+    const indices = new Set<number>();
+    
+    while (indices.size < k) {
+      const index = Math.floor(Math.random() * colors.length);
+      if (!indices.has(index)) {
+        indices.add(index);
+        centroids.push([...colors[index].rgb]); // Clone RGB values
+      }
+    }
+    
+    return centroids;
+  };
+  
+  let centroids = getRandomCentroids();
+  let clusters: number[][] = Array(k).fill(0).map(() => []);
+  
+  // Run k-means algorithm
+  for (let iter = 0; iter < iterations; iter++) {
+    // Reset clusters
+    clusters = Array(k).fill(0).map(() => []);
+    
+    // Assign colors to clusters based on nearest centroid
+    colors.forEach((color, colorIndex) => {
+      let minDistance = Infinity;
+      let clusterIndex = 0;
+      
+      centroids.forEach((centroid, i) => {
+        const distance = rgbDistance(color.rgb, centroid);
+        if (distance < minDistance) {
+          minDistance = distance;
+          clusterIndex = i;
+        }
+      });
+      
+      clusters[clusterIndex].push(colorIndex);
+    });
+    
+    // Recalculate centroids
+    const newCentroids = centroids.map((_, i) => {
+      const clusterColors = clusters[i].map(colorIndex => colors[colorIndex].rgb);
+      
+      if (clusterColors.length === 0) {
+        // If cluster is empty, keep current centroid
+        return centroids[i];
+      }
+      
+      // Calculate average RGB values
+      const sumRGB = clusterColors.reduce(
+        (sum, rgb) => [sum[0] + rgb[0], sum[1] + rgb[1], sum[2] + rgb[2]],
+        [0, 0, 0]
+      );
+      
+      return [
+        Math.round(sumRGB[0] / clusterColors.length),
+        Math.round(sumRGB[1] / clusterColors.length),
+        Math.round(sumRGB[2] / clusterColors.length)
+      ];
+    });
+    
+    // Check for convergence
+    const centroidsChanged = newCentroids.some((centroid, i) => 
+      rgbDistance(centroid, centroids[i]) > 1
+    );
+    
+    centroids = newCentroids;
+    
+    if (!centroidsChanged) break;
+  }
+  
+  // Map clusters to named color families
+  const result: { [key: string]: ColorData[] } = {};
+  
+  centroids.forEach((centroid, i) => {
+    // Determine color family for this centroid
+    const family = getColorFamily(centroid).main;
+    
+    // Group colors by this family
+    const clusterColors = clusters[i].map(colorIndex => colors[colorIndex]);
+    
+    if (!result[family]) {
+      result[family] = [];
+    }
+    
+    result[family].push(...clusterColors);
+  });
+  
+  return result;
+};
+
+// Convert hex to CSS color string
+export const hexToCssColor = (hex: string): string => {
+  return hex.startsWith('#') ? hex : `#${hex}`;
+};
+
+// Convert RGB array to CSS color string
+export const rgbToCssColor = (rgb: number[]): string => {
+  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
 };

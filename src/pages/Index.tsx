@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import ColorLibrary from "@/components/ColorLibrary";
@@ -9,6 +9,8 @@ import { ColorData, ColorLibraryData } from "@/types/colors";
 import { getColorFamily } from "@/utils/colorUtils";
 import { cn } from "@/lib/utils";
 import SampleTemplateButton from "@/components/SampleTemplateButton";
+import ColorSearchInput from "@/components/ColorSearchInput";
+import ColorSimilarityResults from "@/components/ColorSimilarityResults";
 
 const Index = () => {
   const [colorLibraries, setColorLibraries] = useState<ColorLibraryData[]>([]);
@@ -17,6 +19,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [colorFamily, setColorFamily] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [similarityResults, setSimilarityResults] = useState<ColorData[]>([]);
 
   // Load saved libraries from localStorage on component mount
   useEffect(() => {
@@ -52,6 +55,12 @@ const Index = () => {
     document.documentElement.classList.toggle("dark");
     localStorage.setItem("darkMode", (!darkMode).toString());
   };
+
+  // Get all colors from the active library
+  const activeLibraryColors = useMemo(() => {
+    if (activeLibrary === null || !colorLibraries[activeLibrary]) return [];
+    return colorLibraries[activeLibrary].colors;
+  }, [colorLibraries, activeLibrary]);
 
   const handleImport = (name: string, colors: ColorData[]) => {
     // Process colors to add family classification
@@ -137,7 +146,9 @@ const Index = () => {
         Name: color.name,
         HEX: color.hex,
         RGB: `rgb(${color.rgb.join(", ")})`,
-        Family: color.family || "Unknown"
+        Family: typeof color.family === 'string' 
+          ? color.family 
+          : `${color.family.main}${color.family.sub ? ` - ${color.family.sub}` : ''}`
       }));
       
       // Create worksheet
@@ -154,6 +165,10 @@ const Index = () => {
       console.error("Error exporting library:", error);
       toast.error("Failed to export library");
     }
+  };
+
+  const handleColorSearch = (results: ColorData[]) => {
+    setSimilarityResults(results);
   };
 
   return (
@@ -176,13 +191,25 @@ const Index = () => {
       
       <main className="container mx-auto px-4 py-6">
         {activeLibrary !== null && colorLibraries[activeLibrary] ? (
-          <ColorLibrary 
-            library={colorLibraries[activeLibrary]}
-            searchQuery={searchQuery}
-            colorFamily={colorFamily}
-            onDeleteColor={handleColorDelete}
-            onAddColor={handleAddColor}
-          />
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+                {colorLibraries[activeLibrary].name}
+              </h1>
+              <ColorSearchInput 
+                allColors={activeLibraryColors}
+                onSearchResults={handleColorSearch} 
+              />
+            </div>
+            
+            <ColorLibrary 
+              library={colorLibraries[activeLibrary]}
+              searchQuery={searchQuery}
+              colorFamily={colorFamily}
+              onDeleteColor={handleColorDelete}
+              onAddColor={handleAddColor}
+            />
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center">
             <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">
@@ -219,6 +246,14 @@ const Index = () => {
         onClose={() => setImportModalOpen(false)}
         onImport={handleImport}
       />
+      
+      {similarityResults.length > 0 && (
+        <ColorSimilarityResults 
+          results={similarityResults}
+          onClose={() => setSimilarityResults([])}
+          displayFormat="all"
+        />
+      )}
     </div>
   );
 };

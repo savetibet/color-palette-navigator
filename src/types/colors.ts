@@ -63,3 +63,9 @@ export const COLOR_SHADES = {
     "Ebony", "Jet", "Obsidian", "Onyx", "Raven", "Ivory", "Pearl", "Alabaster", "Chalk", "Snow"
   ]
 };
+
+// Custom types for color search functionality
+export interface ColorSearchResult {
+  color: ColorData;
+  distance: number;
+}
