@@ -1,5 +1,4 @@
-
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ColorData } from '@/types/colors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

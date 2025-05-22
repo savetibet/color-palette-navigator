@@ -27,6 +27,7 @@ type NavbarProps = {
   setColorFamily: (family: string | null) => void;
   darkMode: boolean;
   toggleDarkMode: () => void;
+  isProcessing?: boolean;  // Add this property
 };
 
 const Navbar = ({
@@ -42,6 +43,7 @@ const Navbar = ({
   setColorFamily,
   darkMode,
   toggleDarkMode,
+  isProcessing,
 }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
