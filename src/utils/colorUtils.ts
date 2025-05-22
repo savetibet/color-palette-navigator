@@ -1,5 +1,4 @@
-
-import { ColorData } from '@/types/colors';
+import { ColorData, ColorFamily } from '@/types/colors';
 
 // Function to convert HEX to RGB
 export const hexToRgb = (hex: string): number[] => {
@@ -103,7 +102,7 @@ export const detectColorFormat = (colorStr: string): "hex" | "rgb" | "unknown" =
   return "unknown";
 };
 
-// Convert RGB to HSL
+// Convert RGB to HSL - improved implementation
 export const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
   r /= 255;
   g /= 255;
@@ -152,60 +151,96 @@ export const getLightness = (rgb: number[]): number => {
   return l; // 0-100
 };
 
-// Enhanced function to determine color family with specific shade names
-export const getColorFamily = (rgb: number[]): { main: string; sub: string | null } => {
+/**
+ * Enhanced color family classification based on HSL values
+ * This implementation uses more refined HSL boundaries with special cases for
+ * edge cases like pinks, magentas, and desaturated colors
+ */
+export const getColorFamily = (rgb: number[]): ColorFamily => {
   const [r, g, b] = rgb;
   const [hue, saturation, lightness] = rgbToHsl(r, g, b);
   
-  // Check for neutrals: black, white, and gray first
-  if (saturation <= 10) {
+  // Special case: Black, White, and Gray
+  if (saturation <= 15) { // Increased threshold to catch more grays
+    if (lightness <= 12) return { main: "Black/White", sub: "Black" };
+    if (lightness >= 88) return { main: "Black/White", sub: "White" };
+    return { main: "Gray", sub: getLightnessTone(lightness) };
+  }
+
+  // Special case: Very low saturation but not quite gray
+  if (saturation <= 20 && (lightness < 25 || lightness > 85)) {
+    // Very dark low-saturation colors should be black, very light ones white
     if (lightness <= 15) return { main: "Black/White", sub: "Black" };
     if (lightness >= 85) return { main: "Black/White", sub: "White" };
     return { main: "Gray", sub: getLightnessTone(lightness) };
   }
   
-  // Determine main color family and specific shade based on HSL hue
-  if ((hue >= 355 || hue < 10)) {
+  // Special case: Brown detection (complex condition with multiple factors)
+  // Browns are usually low-saturation, medium-low lightness in yellow-red hue range
+  if (((hue >= 0 && hue <= 40) || (hue >= 355 && hue <= 360)) && 
+      saturation > 15 && saturation < 50 && 
+      lightness > 15 && lightness < 50) {
+    return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
+  }
+  
+  // Main color family classification based on hue
+  // For higher confidence, use narrower hue ranges for vibrant colors
+  if (lightness < 15) return { main: "Black/White", sub: "Black" };
+  if (lightness > 90) return { main: "Black/White", sub: "White" };
+  
+  // For very low saturation colors at medium lightness, favor gray
+  if (saturation < 20 && lightness > 25 && lightness < 75) {
+    return { main: "Gray", sub: getLightnessTone(lightness) };
+  }
+  
+  // Pink/Magenta special case - often classified incorrectly
+  if ((hue >= 330 || hue <= 10) && saturation > 30 && lightness > 65) {
+    return { main: "Red", sub: "Pink" };
+  }
+  
+  // Final classification by hue ranges
+  // Reds wrap around the color wheel (both low and high hue values)
+  if ((hue >= 345 || hue < 10)) {
     return { main: "Red", sub: getRedShade(hue, saturation, lightness) };
-  } else if (hue >= 10 && hue < 40) {
+  } 
+  // Orange
+  else if (hue >= 10 && hue < 45) {
     return { main: "Orange", sub: getOrangeShade(hue, saturation, lightness) };
-  } else if (hue >= 40 && hue < 65) {
+  } 
+  // Yellow - narrowed from previous likely-too-wide range
+  else if (hue >= 45 && hue < 70) {
     return { main: "Yellow", sub: getYellowShade(hue, saturation, lightness) };
-  } else if (hue >= 65 && hue < 160) {
+  } 
+  // Green - widened to include yellow-greens
+  else if (hue >= 70 && hue < 170) {
     return { main: "Green", sub: getGreenShade(hue, saturation, lightness) };
-  } else if (hue >= 160 && hue < 260) {
+  } 
+  // Blue
+  else if (hue >= 170 && hue < 270) {
     return { main: "Blue", sub: getBlueShade(hue, saturation, lightness) };
-  } else if (hue >= 260 && hue < 330) {
+  } 
+  // Purple
+  else if (hue >= 270 && hue < 345) {
     return { main: "Purple", sub: getPurpleShade(hue, saturation, lightness) };
-  } else if (hue >= 330 && hue < 355) {
-    return { main: "Red", sub: "Magenta" };
   }
   
-  // Brown requires special handling
-  if (saturation < 50 && lightness < 60 && lightness > 20) {
-    if (hue >= 20 && hue < 50) {
-      return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
-    }
-  }
-  
+  // Fallback - should rarely hit this
   return { main: "Unknown", sub: null };
 };
 
 // Helper functions for specific shade determination
 const getRedShade = (hue: number, saturation: number, lightness: number): string => {
   if (lightness < 30) return "Maroon";
-  if (hue < 5) {
-    return lightness > 50 ? "Scarlet" : "Ruby";
+  if (lightness > 75) return "Pink";
+  if (hue < 5 || hue > 350) {
+    return "Scarlet";
   }
-  if (hue >= 5) {
-    return lightness > 50 ? "Crimson" : "Cherry";
-  }
-  return "Red";
+  return "Crimson";
 };
 
 const getOrangeShade = (hue: number, saturation: number, lightness: number): string => {
   if (hue < 20) return "Vermilion";
-  if (hue > 30) return "Amber";
+  if (hue > 35) return "Amber";
   if (saturation < 60) return "Terracotta";
   if (lightness > 60) return "Peach";
   return "Tangerine";
@@ -219,33 +254,33 @@ const getYellowShade = (hue: number, saturation: number, lightness: number): str
 };
 
 const getGreenShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 80) return "Chartreuse";
-  if (hue > 140) return "Teal";
-  if (hue > 100 && lightness < 40) return "Forest";
+  if (hue < 90) return "Chartreuse";
+  if (hue > 150) return "Teal";
+  if (lightness < 30) return "Forest";
   if (lightness > 70) return "Mint";
-  if (saturation < 50) return "Olive";
+  if (saturation < 40) return "Olive";
   return "Emerald";
 };
 
 const getBlueShade = (hue: number, saturation: number, lightness: number): string => {
   if (hue < 190) return "Turquoise";
-  if (hue > 225) return "Indigo";
-  if (lightness < 40) return "Navy";
-  if (lightness > 65) return "Sky";
+  if (hue > 240) return "Indigo";
+  if (lightness < 35) return "Navy";
+  if (lightness > 70) return "Sky";
   return "Cobalt";
 };
 
 const getPurpleShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 280) return "Violet";
-  if (hue > 300) return "Magenta";
-  if (lightness < 40) return "Eggplant";
-  if (lightness > 70) return lightness > 85 ? "Lavender" : "Lilac";
+  if (hue < 290) return "Violet";
+  if (hue > 320) return "Magenta";
+  if (lightness < 30) return "Eggplant";
+  if (lightness > 75) return "Lavender";
   return "Amethyst";
 };
 
 const getBrownShade = (hue: number, saturation: number, lightness: number): string => {
-  if (lightness < 30) return "Chocolate";
-  if (hue > 35) return "Tan";
+  if (lightness < 25) return "Chocolate";
+  if (hue > 30) return "Tan";
   if (saturation > 40) return "Sienna";
   return "Coffee";
 };
@@ -432,4 +467,27 @@ export const hexToCssColor = (hex: string): string => {
 // Convert RGB array to CSS color string
 export const rgbToCssColor = (rgb: number[]): string => {
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+};
+
+// Add a new function to validate and verify color classification
+/**
+ * Utility function to validate color classification
+ * Useful for testing and debugging color classifications
+ * 
+ * @param rgb RGB color array [r, g, b]
+ * @returns Object with color details including HSL values and classification
+ */
+export const validateColorClassification = (rgb: number[]): {
+  rgb: number[];
+  hsl: [number, number, number];
+  family: ColorFamily;
+} => {
+  const hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+  const family = getColorFamily(rgb);
+  
+  return {
+    rgb,
+    hsl,
+    family
+  };
 };
