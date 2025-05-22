@@ -1,9 +1,7 @@
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import ColorLibrary from "@/components/ColorLibrary";
-import ImportModal from "@/components/ImportModal";
 import Navbar from "@/components/Navbar";
 import { ColorData, ColorLibraryData } from "@/types/colors";
 import { getColorFamily } from "@/utils/colorUtils";
@@ -11,6 +9,11 @@ import { cn } from "@/lib/utils";
 import SampleTemplateButton from "@/components/SampleTemplateButton";
 import ColorSearchInput from "@/components/ColorSearchInput";
 import ColorSimilarityResults from "@/components/ColorSimilarityResults";
+import LoadingSpinner from "@/components/LoadingSpinner";
+
+// Lazy load heavy components
+const ColorLibrary = lazy(() => import("@/components/ColorLibrary"));
+const ImportModal = lazy(() => import("@/components/ImportModal"));
 
 const Index = () => {
   const [colorLibraries, setColorLibraries] = useState<ColorLibraryData[]>([]);
@@ -20,156 +23,198 @@ const Index = () => {
   const [colorFamily, setColorFamily] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [similarityResults, setSimilarityResults] = useState<ColorData[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Load saved libraries from localStorage on component mount
   useEffect(() => {
-    const savedLibraries = localStorage.getItem("colorLibraries");
-    if (savedLibraries) {
-      try {
-        const parsed = JSON.parse(savedLibraries);
-        setColorLibraries(parsed);
-        if (parsed.length > 0 && activeLibrary === null) {
-          setActiveLibrary(0);
+    const loadLibraries = async () => {
+      const savedLibraries = localStorage.getItem("colorLibraries");
+      if (savedLibraries) {
+        try {
+          const parsed = JSON.parse(savedLibraries);
+          setColorLibraries(parsed);
+          if (parsed.length > 0 && activeLibrary === null) {
+            setActiveLibrary(0);
+          }
+        } catch (error) {
+          console.error("Error parsing saved libraries:", error);
         }
-      } catch (error) {
-        console.error("Error parsing saved libraries:", error);
       }
-    }
-    
-    // Check for saved theme preference
-    const savedTheme = localStorage.getItem("darkMode");
-    if (savedTheme === "true") {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
+      
+      // Check for saved theme preference
+      const savedTheme = localStorage.getItem("darkMode");
+      if (savedTheme === "true") {
+        setDarkMode(true);
+        document.documentElement.classList.add("dark");
+      }
+    };
+
+    loadLibraries();
   }, []);
 
   // Save libraries to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("colorLibraries", JSON.stringify(colorLibraries));
+    // Use a debounced save to avoid excessive writes
+    const saveTimeout = setTimeout(() => {
+      localStorage.setItem("colorLibraries", JSON.stringify(colorLibraries));
+    }, 500);
+    
+    return () => clearTimeout(saveTimeout);
   }, [colorLibraries]);
 
   // Toggle dark mode
-  const toggleDarkMode = () => {
+  const toggleDarkMode = useCallback(() => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle("dark");
     localStorage.setItem("darkMode", (!darkMode).toString());
-  };
+  }, [darkMode]);
 
   // Get all colors from the active library
-  const activeLibraryColors = useMemo(() => {
-    if (activeLibrary === null || !colorLibraries[activeLibrary]) return [];
-    return colorLibraries[activeLibrary].colors;
-  }, [colorLibraries, activeLibrary]);
+  const activeLibraryColors = activeLibrary !== null && colorLibraries[activeLibrary]
+    ? colorLibraries[activeLibrary].colors
+    : [];
 
-  const handleImport = (name: string, colors: ColorData[]) => {
-    // Process colors to add family classification
-    const processedColors = colors.map(color => ({
-      ...color,
-      family: getColorFamily(color.rgb)
-    }));
+  const handleImport = useCallback((name: string, colors: ColorData[]) => {
+    setIsProcessing(true);
     
-    const newLibrary: ColorLibraryData = {
-      id: Date.now(),
-      name,
-      colors: processedColors,
-      createdAt: new Date().toISOString()
-    };
-
-    setColorLibraries([...colorLibraries, newLibrary]);
-    setActiveLibrary(colorLibraries.length);
-    setImportModalOpen(false);
-    toast.success(`Imported ${processedColors.length} colors into "${name}"`);
-  };
-
-  const handleDeleteLibrary = (id: number) => {
-    if (confirm("Are you sure you want to delete this library? This action cannot be undone.")) {
-      const updatedLibraries = colorLibraries.filter(lib => lib.id !== id);
-      setColorLibraries(updatedLibraries);
+    // Use setTimeout to prevent UI blocking during processing
+    setTimeout(() => {
+      // Process colors to add family classification
+      const processedColors = colors.map(color => ({
+        ...color,
+        family: getColorFamily(color.rgb)
+      }));
       
-      // Reset active library if the deleted one was active
-      if (activeLibrary !== null && colorLibraries[activeLibrary].id === id) {
-        setActiveLibrary(updatedLibraries.length > 0 ? 0 : null);
-      }
+      const newLibrary: ColorLibraryData = {
+        id: Date.now(),
+        name,
+        colors: processedColors,
+        createdAt: new Date().toISOString()
+      };
+  
+      setColorLibraries(prev => [...prev, newLibrary]);
+      setActiveLibrary(prev => prev !== null ? prev : 0);
+      setImportModalOpen(false);
+      toast.success(`Imported ${processedColors.length} colors into "${name}"`);
+      setIsProcessing(false);
+    }, 0);
+  }, []);
+
+  const handleDeleteLibrary = useCallback((id: number) => {
+    if (confirm("Are you sure you want to delete this library? This action cannot be undone.")) {
+      setColorLibraries(prev => {
+        const updatedLibraries = prev.filter(lib => lib.id !== id);
+        
+        // Reset active library if the deleted one was active
+        if (activeLibrary !== null && prev[activeLibrary]?.id === id) {
+          setTimeout(() => {
+            setActiveLibrary(updatedLibraries.length > 0 ? 0 : null);
+          }, 0);
+        }
+        
+        return updatedLibraries;
+      });
       
       toast.success("Library deleted successfully");
     }
-  };
+  }, [activeLibrary, colorLibraries]);
 
-  const handleColorDelete = (colorId: string) => {
+  const handleColorDelete = useCallback((colorId: string) => {
     if (activeLibrary === null) return;
     
-    const updatedLibraries = [...colorLibraries];
-    const libraryIndex = colorLibraries.findIndex(lib => lib.id === colorLibraries[activeLibrary].id);
+    setIsProcessing(true);
     
-    updatedLibraries[libraryIndex] = {
-      ...updatedLibraries[libraryIndex],
-      colors: updatedLibraries[libraryIndex].colors.filter(color => color.id !== colorId)
-    };
-    
-    setColorLibraries(updatedLibraries);
-    toast.success("Color removed successfully");
-  };
+    setTimeout(() => {
+      setColorLibraries(prev => {
+        const updatedLibraries = [...prev];
+        const libraryIndex = prev.findIndex(lib => lib.id === prev[activeLibrary].id);
+        
+        updatedLibraries[libraryIndex] = {
+          ...updatedLibraries[libraryIndex],
+          colors: updatedLibraries[libraryIndex].colors.filter(color => color.id !== colorId)
+        };
+        
+        return updatedLibraries;
+      });
+      
+      toast.success("Color removed successfully");
+      setIsProcessing(false);
+    }, 0);
+  }, [activeLibrary]);
 
-  const handleAddColor = (color: ColorData) => {
+  const handleAddColor = useCallback((color: ColorData) => {
     if (activeLibrary === null) {
       toast.error("Please select or create a library first");
       return;
     }
     
-    const updatedLibraries = [...colorLibraries];
-    const libraryIndex = colorLibraries.findIndex(lib => lib.id === colorLibraries[activeLibrary].id);
+    setIsProcessing(true);
     
-    updatedLibraries[libraryIndex] = {
-      ...updatedLibraries[libraryIndex],
-      colors: [...updatedLibraries[libraryIndex].colors, {
-        ...color,
-        id: Date.now().toString(),
-        family: getColorFamily(color.rgb)
-      }]
-    };
-    
-    setColorLibraries(updatedLibraries);
-    toast.success("Color added successfully");
-  };
+    setTimeout(() => {
+      setColorLibraries(prev => {
+        const updatedLibraries = [...prev];
+        const libraryIndex = prev.findIndex(lib => lib.id === prev[activeLibrary].id);
+        
+        updatedLibraries[libraryIndex] = {
+          ...updatedLibraries[libraryIndex],
+          colors: [...updatedLibraries[libraryIndex].colors, {
+            ...color,
+            id: Date.now().toString(),
+            family: getColorFamily(color.rgb)
+          }]
+        };
+        
+        return updatedLibraries;
+      });
+      
+      toast.success("Color added successfully");
+      setIsProcessing(false);
+    }, 0);
+  }, [activeLibrary]);
 
-  const handleExport = (libraryId: number) => {
+  const handleExport = useCallback((libraryId: number) => {
     const library = colorLibraries.find(lib => lib.id === libraryId);
     if (!library) return;
     
+    setIsProcessing(true);
+    
     try {
-      // Create workbook
-      const workbook = XLSX.utils.book_new();
-      
-      // Format colors for export
-      const exportData = library.colors.map(color => ({
-        Name: color.name,
-        HEX: color.hex,
-        RGB: `rgb(${color.rgb.join(", ")})`,
-        Family: typeof color.family === 'string' 
-          ? color.family 
-          : `${color.family.main}${color.family.sub ? ` - ${color.family.sub}` : ''}`
-      }));
-      
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(workbook, worksheet, library.name);
-      
-      // Generate file and download
-      XLSX.writeFile(workbook, `${library.name}-colors.xlsx`);
-      
-      toast.success(`Exported "${library.name}" library`);
+      setTimeout(() => {
+        // Create workbook
+        const workbook = XLSX.utils.book_new();
+        
+        // Format colors for export
+        const exportData = library.colors.map(color => ({
+          Name: color.name,
+          HEX: color.hex,
+          RGB: `rgb(${color.rgb.join(", ")})`,
+          Family: typeof color.family === 'string' 
+            ? color.family 
+            : `${color.family.main}${color.family.sub ? ` - ${color.family.sub}` : ''}`
+        }));
+        
+        // Create worksheet
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(workbook, worksheet, library.name);
+        
+        // Generate file and download
+        XLSX.writeFile(workbook, `${library.name}-colors.xlsx`);
+        
+        toast.success(`Exported "${library.name}" library`);
+        setIsProcessing(false);
+      }, 0);
     } catch (error) {
       console.error("Error exporting library:", error);
       toast.error("Failed to export library");
+      setIsProcessing(false);
     }
-  };
+  }, [colorLibraries]);
 
-  const handleColorSearch = (results: ColorData[]) => {
+  const handleColorSearch = useCallback((results: ColorData[]) => {
     setSimilarityResults(results);
-  };
+  }, []);
 
   return (
     <div className={cn("min-h-screen bg-gray-50 transition-colors duration-300", 
@@ -187,6 +232,7 @@ const Index = () => {
         setColorFamily={setColorFamily}
         darkMode={darkMode}
         toggleDarkMode={toggleDarkMode}
+        isProcessing={isProcessing}
       />
       
       <main className="container mx-auto px-4 py-6">
@@ -202,13 +248,20 @@ const Index = () => {
               />
             </div>
             
-            <ColorLibrary 
-              library={colorLibraries[activeLibrary]}
-              searchQuery={searchQuery}
-              colorFamily={colorFamily}
-              onDeleteColor={handleColorDelete}
-              onAddColor={handleAddColor}
-            />
+            <Suspense fallback={
+              <div className="flex justify-center items-center h-64">
+                <LoadingSpinner size="lg" />
+              </div>
+            }>
+              <ColorLibrary 
+                library={colorLibraries[activeLibrary]}
+                searchQuery={searchQuery}
+                colorFamily={colorFamily}
+                onDeleteColor={handleColorDelete}
+                onAddColor={handleAddColor}
+                isProcessing={isProcessing}
+              />
+            </Suspense>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center">
@@ -241,11 +294,17 @@ const Index = () => {
         )}
       </main>
 
-      <ImportModal
-        isOpen={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
-        onImport={handleImport}
-      />
+      <Suspense fallback={
+        <div className="flex justify-center items-center h-32">
+          <LoadingSpinner size="lg" />
+        </div>
+      }>
+        <ImportModal
+          isOpen={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          onImport={handleImport}
+        />
+      </Suspense>
       
       {similarityResults.length > 0 && (
         <ColorSimilarityResults 

@@ -11,6 +11,8 @@ import {
   parseRgbString,
   findSimilarColors
 } from '@/utils/colorUtils';
+import useDebounce from '@/hooks/useDebounce';
+import LoadingSpinner from './LoadingSpinner';
 
 interface ColorSearchInputProps {
   allColors: ColorData[];
@@ -20,7 +22,16 @@ interface ColorSearchInputProps {
 const ColorSearchInput = ({ allColors, onSearchResults }: ColorSearchInputProps) => {
   const [searchValue, setSearchValue] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debouncedSearchValue = useDebounce(searchValue, 300);
+
+  // Use effect for handling the debounced search
+  useEffect(() => {
+    if (debouncedSearchValue && debouncedSearchValue.trim()) {
+      handleSearch();
+    }
+  }, [debouncedSearchValue]);
 
   const handleSearch = () => {
     if (!searchValue.trim()) {
@@ -29,6 +40,8 @@ const ColorSearchInput = ({ allColors, onSearchResults }: ColorSearchInputProps)
     }
 
     try {
+      setIsSearching(true);
+
       // Determine the format and extract RGB values
       const format = detectColorFormat(searchValue);
       let rgbValues: number[];
@@ -43,16 +56,21 @@ const ColorSearchInput = ({ allColors, onSearchResults }: ColorSearchInputProps)
         rgbValues = parseRgbString(searchValue);
       } else {
         setSearchError('Please enter a valid HEX or RGB color value');
+        setIsSearching(false);
         return;
       }
 
-      // Find similar colors
-      const results = findSimilarColors(rgbValues, allColors, 10);
-      onSearchResults(results);
-      setSearchError(null);
+      // Find similar colors (use a setTimeout to prevent UI blocking)
+      setTimeout(() => {
+        const results = findSimilarColors(rgbValues, allColors, 10);
+        onSearchResults(results);
+        setSearchError(null);
+        setIsSearching(false);
+      }, 0);
     } catch (error) {
       console.error('Error searching for similar colors:', error);
       setSearchError('Invalid color format. Try #RRGGBB or rgb(r,g,b)');
+      setIsSearching(false);
     }
   };
 
@@ -72,8 +90,16 @@ const ColorSearchInput = ({ allColors, onSearchResults }: ColorSearchInputProps)
             }}
           />
         </div>
-        <Button onClick={handleSearch} size="icon">
-          <Search className="h-4 w-4" />
+        <Button 
+          onClick={handleSearch} 
+          size="icon" 
+          disabled={isSearching}
+        >
+          {isSearching ? (
+            <LoadingSpinner size="sm" />
+          ) : (
+            <Search className="h-4 w-4" />
+          )}
         </Button>
       </div>
       {searchError && (

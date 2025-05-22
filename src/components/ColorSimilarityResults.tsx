@@ -1,52 +1,63 @@
 
+import { useEffect, useState } from 'react';
 import { ColorData } from '@/types/colors';
-import ColorCard from '@/components/ColorCard';
 import { X } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import ColorCard from '@/components/ColorCard';
+import LoadingSpinner from './LoadingSpinner';
 
 interface ColorSimilarityResultsProps {
   results: ColorData[];
   onClose: () => void;
-  displayFormat: "hex" | "rgb" | "lab" | "all";
+  displayFormat?: "hex" | "rgb" | "lab" | "all";
 }
 
-const ColorSimilarityResults = ({ results, onClose, displayFormat }: ColorSimilarityResultsProps) => {
-  if (results.length === 0) return null;
+const ColorSimilarityResults = ({ 
+  results, 
+  onClose, 
+  displayFormat = "all" 
+}: ColorSimilarityResultsProps) => {
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    // Simulate a small delay to show loading state
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [results]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[85vh] overflow-hidden">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-            Similar Colors ({results.length})
-          </h3>
+    <Sheet open={results.length > 0} onOpenChange={open => !open && onClose()}>
+      <SheetContent side="right" className="w-full md:max-w-md lg:max-w-lg">
+        <SheetHeader className="flex flex-row justify-between items-center mb-4">
+          <SheetTitle>Similar Colors</SheetTitle>
           <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </Button>
-        </div>
-
-        <div className="p-5 overflow-y-auto max-h-[70vh]">
-          {results.length === 0 ? (
-            <p className="text-center text-gray-500 dark:text-gray-400">No similar colors found</p>
-          ) : (
-            <div className={cn(
-              "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-            )}>
-              {results.map((color) => (
-                <ColorCard
-                  key={color.id}
-                  color={color}
-                  displayFormat={displayFormat}
-                  viewMode="grid"
-                  onDelete={() => {}} // Not allowing deletion in search results
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+        </SheetHeader>
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <LoadingSpinner size="lg" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto max-h-[calc(100vh-120px)]">
+            {results.map((color, index) => (
+              <ColorCard
+                key={`${color.id}-${index}`}
+                color={color}
+                displayFormat={displayFormat}
+                viewMode="grid"
+                onDelete={() => {}}
+              />
+            ))}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };
 
