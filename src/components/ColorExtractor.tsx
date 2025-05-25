@@ -6,7 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { FirecrawlService } from '@/utils/FirecrawlService';
-import { Download, Key } from 'lucide-react';
+import { Download, Key, RefreshCw } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface ColorData {
   name: string;
@@ -42,78 +50,130 @@ const ColorExtractor = () => {
     });
   };
 
-  const extractColorsFromHTML = (html: string): ColorData[] => {
+  const extractColorsFromContent = (html: string, markdown: string = ''): ColorData[] => {
     const colors: ColorData[] = [];
+    console.log('Extracting colors from content, HTML length:', html.length);
     
-    // Create a temporary DOM element to parse HTML
+    // Multiple extraction strategies
+    const content = html + ' ' + markdown;
+    
+    // Strategy 1: Look for hex patterns with names
+    const hexPatterns = [
+      /#([0-9A-Fa-f]{6})/g,
+      /([0-9A-Fa-f]{6})/g,
+      /color[:\s]*#([0-9A-Fa-f]{6})/gi,
+      /background[:\s]*#([0-9A-Fa-f]{6})/gi
+    ];
+    
+    hexPatterns.forEach(pattern => {
+      const matches = content.matchAll(pattern);
+      for (const match of matches) {
+        const hex = '#' + match[1].toUpperCase();
+        if (!colors.find(c => c.hex === hex)) {
+          const r = parseInt(hex.slice(1, 3), 16);
+          const g = parseInt(hex.slice(3, 5), 16);
+          const b = parseInt(hex.slice(5, 7), 16);
+          
+          colors.push({
+            name: `Color ${hex}`,
+            hex,
+            r,
+            g,
+            b
+          });
+        }
+      }
+    });
+    
+    // Strategy 2: Parse HTML structure for color cards/items
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // Look for color elements - this pattern may need adjustment based on the actual HTML structure
-    const colorElements = doc.querySelectorAll('[data-color], .color-item, .color-swatch, [style*="background"], [style*="color"]');
+    // Look for common color card patterns
+    const colorSelectors = [
+      '.color-card',
+      '.color-item',
+      '.color-swatch',
+      '[data-color]',
+      '.hex-color',
+      '.color-box',
+      'div[style*="background"]',
+      '.color-sample'
+    ];
     
-    colorElements.forEach(element => {
-      const style = element.getAttribute('style');
-      const dataColor = element.getAttribute('data-color');
-      const textContent = element.textContent?.trim();
-      
-      // Extract hex color from style attribute
-      const hexMatch = style?.match(/#([0-9A-Fa-f]{6})/);
-      let hex = hexMatch ? hexMatch[0] : dataColor;
-      
-      if (!hex && textContent) {
-        const textHexMatch = textContent.match(/#([0-9A-Fa-f]{6})/);
-        hex = textHexMatch ? textHexMatch[0] : '';
-      }
-      
-      if (hex && hex.length === 7) {
-        // Extract color name from nearby text or title attribute
-        const name = element.getAttribute('title') || 
-                    element.textContent?.replace(hex, '').trim() || 
-                    element.closest('[title]')?.getAttribute('title') ||
-                    `Color ${hex}`;
+    colorSelectors.forEach(selector => {
+      const elements = doc.querySelectorAll(selector);
+      elements.forEach(element => {
+        const style = element.getAttribute('style') || '';
+        const dataColor = element.getAttribute('data-color');
+        const textContent = element.textContent?.trim() || '';
         
-        // Convert hex to RGB
+        // Extract hex from various sources
+        let hex = '';
+        const hexMatch = style.match(/#([0-9A-Fa-f]{6})/);
+        if (hexMatch) {
+          hex = hexMatch[0];
+        } else if (dataColor && dataColor.match(/^#[0-9A-Fa-f]{6}$/)) {
+          hex = dataColor;
+        } else {
+          const textHex = textContent.match(/#([0-9A-Fa-f]{6})/);
+          if (textHex) hex = textHex[0];
+        }
+        
+        if (hex) {
+          // Try to find a color name
+          let name = element.getAttribute('title') || 
+                     element.getAttribute('data-name') ||
+                     element.querySelector('.color-name')?.textContent?.trim() ||
+                     textContent.replace(hex, '').trim() ||
+                     `Color ${hex}`;
+          
+          name = name.replace(/[^\w\s-]/g, '').trim() || `Color ${hex}`;
+          
+          const r = parseInt(hex.slice(1, 3), 16);
+          const g = parseInt(hex.slice(3, 5), 16);
+          const b = parseInt(hex.slice(5, 7), 16);
+          
+          if (!colors.find(c => c.hex === hex.toUpperCase())) {
+            colors.push({
+              name,
+              hex: hex.toUpperCase(),
+              r,
+              g,
+              b
+            });
+          }
+        }
+      });
+    });
+    
+    // Strategy 3: Look for structured color data in text
+    const colorLinePattern = /([A-Za-z\s]+)\s*[:\-]?\s*#([0-9A-Fa-f]{6})/g;
+    const colorMatches = content.matchAll(colorLinePattern);
+    
+    for (const match of colorMatches) {
+      const name = match[1].trim();
+      const hex = '#' + match[2].toUpperCase();
+      
+      if (name && !colors.find(c => c.hex === hex)) {
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
         
         colors.push({
-          name: name.replace(/[^\w\s]/g, '').trim() || `Color ${hex}`,
-          hex: hex.toUpperCase(),
+          name: name.replace(/[^\w\s-]/g, '').trim() || `Color ${hex}`,
+          hex,
           r,
           g,
           b
         });
       }
-    });
+    }
     
-    // Also try to extract from markdown content if HTML parsing doesn't work well
-    const markdownHexPattern = /#([0-9A-Fa-f]{6})/g;
-    const hexMatches = html.match(markdownHexPattern) || [];
-    
-    hexMatches.forEach((hex, index) => {
-      if (!colors.find(c => c.hex === hex.toUpperCase())) {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        
-        colors.push({
-          name: `Color ${index + 1}`,
-          hex: hex.toUpperCase(),
-          r,
-          g,
-          b
-        });
-      }
-    });
-    
-    // Remove duplicates based on hex value
-    const uniqueColors = colors.filter((color, index, self) => 
+    console.log('Extracted colors:', colors.length);
+    return colors.filter((color, index, self) => 
       index === self.findIndex(c => c.hex === color.hex)
     );
-    
-    return uniqueColors;
   };
 
   const handleExtractColors = async () => {
@@ -123,16 +183,19 @@ const ColorExtractor = () => {
     
     try {
       const url = 'https://htmlcolorcodes.com/colors/';
+      console.log('Starting color extraction from:', url);
       
       setProgress(25);
       const result = await FirecrawlService.scrapeWebsite(url);
-      setProgress(50);
+      setProgress(75);
       
       if (result.success && result.data) {
-        const html = result.data.html || result.data.markdown || '';
-        const colors = extractColorsFromHTML(html);
+        console.log('Scrape result:', result.data);
+        const html = result.data.html || '';
+        const markdown = result.data.markdown || '';
+        const colors = extractColorsFromContent(html, markdown);
         
-        setProgress(75);
+        setProgress(90);
         setExtractedColors(colors);
         setProgress(100);
         
@@ -141,6 +204,7 @@ const ColorExtractor = () => {
           description: `Extracted ${colors.length} colors from the website`,
         });
       } else {
+        console.error('Scrape failed:', result.error);
         toast({
           title: "Error",
           description: result.error || "Failed to extract colors",
@@ -229,7 +293,14 @@ const ColorExtractor = () => {
               disabled={isLoading}
               className="flex-1"
             >
-              {isLoading ? "Extracting Colors..." : "Extract All Colors"}
+              {isLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Extracting Colors...
+                </>
+              ) : (
+                "Extract All Colors"
+              )}
             </Button>
             <Button 
               variant="outline" 
@@ -257,31 +328,31 @@ const ColorExtractor = () => {
               </div>
               
               <div className="max-h-96 overflow-y-auto border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="p-2 text-left">Color</th>
-                      <th className="p-2 text-left">Name</th>
-                      <th className="p-2 text-left">Hex</th>
-                      <th className="p-2 text-left">RGB</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Color</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Hex</TableHead>
+                      <TableHead>RGB</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {extractedColors.map((color, index) => (
-                      <tr key={index} className="border-t">
-                        <td className="p-2">
+                      <TableRow key={index}>
+                        <TableCell>
                           <div 
                             className="w-8 h-8 rounded border"
                             style={{ backgroundColor: color.hex }}
                           />
-                        </td>
-                        <td className="p-2">{color.name}</td>
-                        <td className="p-2 font-mono">{color.hex}</td>
-                        <td className="p-2">{color.r}, {color.g}, {color.b}</td>
-                      </tr>
+                        </TableCell>
+                        <TableCell>{color.name}</TableCell>
+                        <TableCell className="font-mono">{color.hex}</TableCell>
+                        <TableCell>{color.r}, {color.g}, {color.b}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}

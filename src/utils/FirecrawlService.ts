@@ -51,24 +51,51 @@ export class FirecrawlService {
     }
 
     try {
-      console.log('Making scrape request to Firecrawl API');
+      console.log('Making scrape request to Firecrawl API for:', url);
       if (!this.firecrawlApp) {
         this.firecrawlApp = new FirecrawlApp({ apiKey });
       }
 
       const scrapeResponse = await this.firecrawlApp.scrapeUrl(url, {
         formats: ['html', 'markdown'],
-        waitFor: 5000, // Wait for dynamic content to load
+        waitFor: 8000, // Wait longer for dynamic content to load
         actions: [
           {
+            type: 'wait',
+            milliseconds: 3000
+          },
+          {
             type: 'click',
-            selector: 'button[data-load-more], .load-more, [onclick*="load"], [onclick*="more"]'
+            selector: 'button:contains("Load More"), .load-more, [data-load-more], button[onclick*="load"], .btn-load-more, #load-more'
+          },
+          {
+            type: 'wait',
+            milliseconds: 4000
+          },
+          {
+            type: 'click',
+            selector: 'button:contains("Load More"), .load-more, [data-load-more], button[onclick*="load"], .btn-load-more, #load-more'
           },
           {
             type: 'wait',
             milliseconds: 3000
           }
-        ]
+        ],
+        extract: {
+          schema: {
+            colors: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  hex: { type: "string" },
+                  rgb: { type: "string" }
+                }
+              }
+            }
+          }
+        }
       }) as FirecrawlResponse;
 
       if (!scrapeResponse.success) {
@@ -79,7 +106,7 @@ export class FirecrawlService {
         };
       }
 
-      console.log('Scrape successful');
+      console.log('Scrape successful, response:', scrapeResponse);
       return { 
         success: true,
         data: (scrapeResponse as ScrapeResponse).data 
