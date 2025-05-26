@@ -10,6 +10,8 @@ import SampleTemplateButton from "@/components/SampleTemplateButton";
 import ColorSearchInput from "@/components/ColorSearchInput";
 import ColorSimilarityResults from "@/components/ColorSimilarityResults";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import ColorLabeler from "@/components/ColorLabeler";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Lazy load heavy components
 const ColorLibrary = lazy(() => import("@/components/ColorLibrary"));
@@ -236,62 +238,75 @@ const Index = () => {
       />
       
       <main className="container mx-auto px-4 py-6">
-        {activeLibrary !== null && colorLibraries[activeLibrary] ? (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-                {colorLibraries[activeLibrary].name}
-              </h1>
-              <ColorSearchInput 
-                allColors={activeLibraryColors}
-                onSearchResults={handleColorSearch} 
-              />
-            </div>
-            
-            <Suspense fallback={
-              <div className="flex justify-center items-center h-64">
-                <LoadingSpinner size="lg" />
+        <Tabs defaultValue="library" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="library">Color Library</TabsTrigger>
+            <TabsTrigger value="labeler">Color Labeler</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="library" className="mt-6">
+            {activeLibrary !== null && colorLibraries[activeLibrary] ? (
+              <div className="space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+                    {colorLibraries[activeLibrary].name}
+                  </h1>
+                  <ColorSearchInput 
+                    allColors={activeLibraryColors}
+                    onSearchResults={handleColorSearch} 
+                  />
+                </div>
+                
+                <Suspense fallback={
+                  <div className="flex justify-center items-center h-64">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                }>
+                  <ColorLibrary 
+                    library={colorLibraries[activeLibrary]}
+                    searchQuery={searchQuery}
+                    colorFamily={colorFamily}
+                    onDeleteColor={handleColorDelete}
+                    onAddColor={handleAddColor}
+                    isProcessing={isProcessing}
+                  />
+                </Suspense>
               </div>
-            }>
-              <ColorLibrary 
-                library={colorLibraries[activeLibrary]}
-                searchQuery={searchQuery}
-                colorFamily={colorFamily}
-                onDeleteColor={handleColorDelete}
-                onAddColor={handleAddColor}
-                isProcessing={isProcessing}
-              />
-            </Suspense>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-            <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">
-              No Color Library Selected
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
-              Import a new color library or create one by adding colors manually.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => setImportModalOpen(true)}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
-              >
-                Import Colors
-              </button>
-              <SampleTemplateButton />
-            </div>
-            <div className="mt-8 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-              <h3 className="text-lg font-medium mb-2">How to import colors:</h3>
-              <ol className="list-decimal list-inside text-left text-gray-600 dark:text-gray-400 space-y-2">
-                <li>Download the template file using the button above</li>
-                <li>Fill in your color data (Name, HEX or RGB values)</li>
-                <li>Save the file as Excel (.xlsx) or CSV (.csv)</li>
-                <li>Click "Import Colors" and upload your file</li>
-                <li>Verify the imported data and give your library a name</li>
-              </ol>
-            </div>
-          </div>
-        )}
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+                <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">
+                  No Color Library Selected
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
+                  Import a new color library or create one by adding colors manually.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button
+                    onClick={() => setImportModalOpen(true)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+                  >
+                    Import Colors
+                  </button>
+                  <SampleTemplateButton />
+                </div>
+                <div className="mt-8 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                  <h3 className="text-lg font-medium mb-2">How to import colors:</h3>
+                  <ol className="list-decimal list-inside text-left text-gray-600 dark:text-gray-400 space-y-2">
+                    <li>Download the template file using the button above</li>
+                    <li>Fill in your color data (Name, HEX or RGB values)</li>
+                    <li>Save the file as Excel (.xlsx) or CSV (.csv)</li>
+                    <li>Click "Import Colors" and upload your file</li>
+                    <li>Verify the imported data and give your library a name</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="labeler" className="mt-6">
+            <ColorLabeler />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <Suspense fallback={
