@@ -1,4 +1,3 @@
-import { ColorData, ColorFamily } from '@/types/colors';
 
 // Function to convert HEX to RGB
 export const hexToRgb = (hex: string): number[] => {
@@ -102,7 +101,7 @@ export const detectColorFormat = (colorStr: string): "hex" | "rgb" | "unknown" =
   return "unknown";
 };
 
-// Convert RGB to HSL - improved implementation
+// Convert RGB to HSL
 export const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
   r /= 255;
   g /= 255;
@@ -151,343 +150,125 @@ export const getLightness = (rgb: number[]): number => {
   return l; // 0-100
 };
 
-/**
- * Enhanced color family classification based on HSL values
- * This implementation uses more refined HSL boundaries with special cases for
- * edge cases like pinks, magentas, and desaturated colors
- */
-export const getColorFamily = (rgb: number[]): ColorFamily => {
+// Improved function to determine color family with specific shade names
+export const getColorFamily = (rgb: number[]): { main: string; sub: string | null } => {
   const [r, g, b] = rgb;
   const [hue, saturation, lightness] = rgbToHsl(r, g, b);
   
-  // Special case: Black, White, and Gray
-  if (saturation <= 15) { // Increased threshold to catch more grays
-    if (lightness <= 12) return { main: "Black/White", sub: "Black" };
-    if (lightness >= 88) return { main: "Black/White", sub: "White" };
-    return { main: "Gray", sub: getLightnessTone(lightness) };
-  }
-
-  // Special case: Very low saturation but not quite gray
-  if (saturation <= 20 && (lightness < 25 || lightness > 85)) {
-    // Very dark low-saturation colors should be black, very light ones white
+  // Enhanced thresholds for better detection
+  // First check for neutrals: black, white, and grays with very low saturation
+  if (saturation <= 15) {
     if (lightness <= 15) return { main: "Black/White", sub: "Black" };
     if (lightness >= 85) return { main: "Black/White", sub: "White" };
     return { main: "Gray", sub: getLightnessTone(lightness) };
   }
   
-  // Special case: Brown detection (complex condition with multiple factors)
-  // Browns are usually low-saturation, medium-low lightness in yellow-red hue range
-  if (((hue >= 0 && hue <= 40) || (hue >= 355 && hue <= 360)) && 
-      saturation > 15 && saturation < 50 && 
-      lightness > 15 && lightness < 50) {
-    return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
+  // Check for browns - these can be tricky as they span multiple hue regions
+  // Browns generally have low to medium saturation and low to medium lightness
+  if (saturation < 50 && lightness > 15 && lightness < 60) {
+    if ((hue >= 0 && hue <= 40) || (hue >= 355)) {
+      return { main: "Brown", sub: getBrownShade(hue, saturation, lightness) };
+    }
   }
   
-  // Main color family classification based on hue
-  // For higher confidence, use narrower hue ranges for vibrant colors
-  if (lightness < 15) return { main: "Black/White", sub: "Black" };
-  if (lightness > 90) return { main: "Black/White", sub: "White" };
-  
-  // For very low saturation colors at medium lightness, favor gray
-  if (saturation < 20 && lightness > 25 && lightness < 75) {
-    return { main: "Gray", sub: getLightnessTone(lightness) };
-  }
-  
-  // Pink/Magenta special case - often classified incorrectly
-  if ((hue >= 330 || hue <= 10) && saturation > 30 && lightness > 65) {
-    return { main: "Red", sub: "Pink" };
-  }
-  
-  // Final classification by hue ranges
-  // Reds wrap around the color wheel (both low and high hue values)
-  if ((hue >= 345 || hue < 10)) {
+  // Determine main color family and specific shade based on HSL hue
+  if ((hue >= 355 || hue < 10)) {
     return { main: "Red", sub: getRedShade(hue, saturation, lightness) };
-  } 
-  // Orange
-  else if (hue >= 10 && hue < 45) {
+  } else if (hue >= 10 && hue < 40) {
     return { main: "Orange", sub: getOrangeShade(hue, saturation, lightness) };
-  } 
-  // Yellow - narrowed from previous likely-too-wide range
-  else if (hue >= 45 && hue < 70) {
+  } else if (hue >= 40 && hue < 65) {
     return { main: "Yellow", sub: getYellowShade(hue, saturation, lightness) };
-  } 
-  // Green - widened to include yellow-greens
-  else if (hue >= 70 && hue < 170) {
+  } else if (hue >= 65 && hue < 160) {
     return { main: "Green", sub: getGreenShade(hue, saturation, lightness) };
-  } 
-  // Blue
-  else if (hue >= 170 && hue < 270) {
+  } else if (hue >= 160 && hue < 260) {
     return { main: "Blue", sub: getBlueShade(hue, saturation, lightness) };
-  } 
-  // Purple
-  else if (hue >= 270 && hue < 345) {
+  } else if (hue >= 260 && hue < 330) {
     return { main: "Purple", sub: getPurpleShade(hue, saturation, lightness) };
+  } else if (hue >= 330 && hue < 355) {
+    return { main: "Red", sub: "Magenta" };
   }
   
-  // Fallback - should rarely hit this
   return { main: "Unknown", sub: null };
 };
 
 // Helper functions for specific shade determination
 const getRedShade = (hue: number, saturation: number, lightness: number): string => {
   if (lightness < 30) return "Maroon";
-  if (lightness > 75) return "Pink";
-  if (hue < 5 || hue > 350) {
-    return "Scarlet";
+  if (lightness < 45) return saturation > 75 ? "Ruby" : "Burgundy";
+  if (hue < 5 || hue >= 355) {
+    return lightness > 60 ? "Scarlet" : "Crimson";
   }
-  return "Crimson";
+  if (lightness > 60) return "Cherry";
+  return "Cardinal";
 };
 
 const getOrangeShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 20) return "Vermilion";
-  if (hue > 35) return "Amber";
+  if (hue < 20) return lightness < 50 ? "Vermilion" : "Coral";
+  if (hue > 30) return "Amber";
   if (saturation < 60) return "Terracotta";
-  if (lightness > 60) return "Peach";
-  return "Tangerine";
+  if (lightness > 70) return "Peach";
+  if (lightness > 60) return "Tangerine";
+  return "Rust";
 };
 
 const getYellowShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 50) return "Gold";
+  if (hue < 50) {
+    if (lightness < 50) return "Ochre";
+    return saturation > 80 ? "Gold" : "Honey";
+  }
   if (saturation < 50) return "Mustard";
   if (lightness > 80) return "Lemon";
   return "Canary";
 };
 
 const getGreenShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 90) return "Chartreuse";
-  if (hue > 150) return "Teal";
-  if (lightness < 30) return "Forest";
-  if (lightness > 70) return "Mint";
-  if (saturation < 40) return "Olive";
+  if (hue < 80) return "Chartreuse";
+  if (hue > 140) return "Teal";
+  if (hue > 100 && lightness < 40) return "Forest";
+  if (lightness > 70) return saturation < 50 ? "Sage" : "Mint";
+  if (saturation < 50) return "Olive";
+  if (lightness < 40) return "Hunter";
+  if (hue < 100) return "Lime";
   return "Emerald";
 };
 
 const getBlueShade = (hue: number, saturation: number, lightness: number): string => {
   if (hue < 190) return "Turquoise";
-  if (hue > 240) return "Indigo";
-  if (lightness < 35) return "Navy";
+  if (hue > 225) return lightness < 50 ? "Indigo" : "Ultramarine";
+  if (lightness < 30) return "Navy";
   if (lightness > 70) return "Sky";
-  return "Cobalt";
+  if (lightness > 50 && saturation > 60) return "Azure";
+  if (saturation > 70) return "Cobalt";
+  return "Royal";
 };
 
 const getPurpleShade = (hue: number, saturation: number, lightness: number): string => {
-  if (hue < 290) return "Violet";
-  if (hue > 320) return "Magenta";
+  if (hue < 280) {
+    return lightness < 50 ? "Violet" : "Periwinkle";
+  }
+  if (hue > 300) return "Magenta";
   if (lightness < 30) return "Eggplant";
-  if (lightness > 75) return "Lavender";
-  return "Amethyst";
+  if (lightness > 80) return "Lavender";
+  if (lightness > 65) return "Lilac";
+  if (saturation > 70) return "Amethyst";
+  return "Mauve";
 };
 
 const getBrownShade = (hue: number, saturation: number, lightness: number): string => {
   if (lightness < 25) return "Chocolate";
-  if (hue > 30) return "Tan";
-  if (saturation > 40) return "Sienna";
-  return "Coffee";
+  if (lightness > 45) {
+    if (saturation < 30) return "Tan";
+    return "Caramel";
+  }
+  if (hue > 25) return "Sienna";
+  if (saturation > 40) return "Coffee";
+  return "Mocha";
 };
 
 const getLightnessTone = (lightness: number): string => {
   if (lightness < 20) return "Charcoal";
   if (lightness > 80) return "Silver";
-  if (lightness > 50) return "Slate";
+  if (lightness > 60) return "Ash";
+  if (lightness > 40) return "Slate";
   return "Graphite";
-};
-
-// Function to parse RGB string into RGB array
-export const parseRgbString = (rgbStr: string): number[] => {
-  const matches = rgbStr.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
-  if (matches) {
-    return [
-      parseInt(matches[1], 10),
-      parseInt(matches[2], 10),
-      parseInt(matches[3], 10)
-    ];
-  }
-  return [0, 0, 0]; // Default black if parsing fails
-};
-
-// Function to calculate Euclidean distance between two RGB colors
-export const rgbDistance = (rgb1: number[], rgb2: number[]): number => {
-  return Math.sqrt(
-    Math.pow(rgb2[0] - rgb1[0], 2) +
-    Math.pow(rgb2[1] - rgb1[1], 2) +
-    Math.pow(rgb2[2] - rgb1[2], 2)
-  );
-};
-
-// Function to find similar colors by RGB
-export const findSimilarColors = (
-  targetColor: number[], 
-  colorLibrary: ColorData[], 
-  limit: number = 10
-): ColorData[] => {
-  // Calculate distances
-  const colorsWithDistance = colorLibrary.map(color => ({
-    color,
-    distance: rgbDistance(targetColor, color.rgb)
-  }));
-  
-  // Sort by distance and return the closest matches
-  return colorsWithDistance
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, limit)
-    .map(item => item.color);
-};
-
-// Function to find similar colors by LAB (more perceptually accurate)
-export const findSimilarColorsByLab = (
-  targetLab: number[], 
-  colorLibrary: ColorData[], 
-  limit: number = 10
-): ColorData[] => {
-  // Calculate distances
-  const colorsWithDistance = colorLibrary.map(color => {
-    // Convert color to LAB if it doesn't have LAB values
-    const lab = color.lab || rgbToLab(color.rgb[0], color.rgb[1], color.rgb[2]);
-    return {
-      color,
-      distance: deltaE(targetLab, lab)
-    };
-  });
-  
-  // Sort by distance and return the closest matches
-  return colorsWithDistance
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, limit)
-    .map(item => item.color);
-};
-
-// K-means clustering to identify color families by RGB similarity
-export const kMeansClusterColors = (colors: ColorData[], k: number = 9, iterations: number = 10): { [key: string]: ColorData[] } => {
-  if (colors.length === 0) return {};
-  if (colors.length <= k) {
-    // If there are fewer colors than clusters, just put each color in its own cluster
-    return colors.reduce((acc, color, index) => {
-      acc[`Cluster ${index + 1}`] = [color];
-      return acc;
-    }, {} as { [key: string]: ColorData[] });
-  }
-
-  // Get random initial centroids
-  const getRandomCentroids = () => {
-    const centroids: number[][] = [];
-    const indices = new Set<number>();
-    
-    while (indices.size < k) {
-      const index = Math.floor(Math.random() * colors.length);
-      if (!indices.has(index)) {
-        indices.add(index);
-        centroids.push([...colors[index].rgb]); // Clone RGB values
-      }
-    }
-    
-    return centroids;
-  };
-  
-  let centroids = getRandomCentroids();
-  let clusters: number[][] = Array(k).fill(0).map(() => []);
-  
-  // Run k-means algorithm
-  for (let iter = 0; iter < iterations; iter++) {
-    // Reset clusters
-    clusters = Array(k).fill(0).map(() => []);
-    
-    // Assign colors to clusters based on nearest centroid
-    colors.forEach((color, colorIndex) => {
-      let minDistance = Infinity;
-      let clusterIndex = 0;
-      
-      centroids.forEach((centroid, i) => {
-        const distance = rgbDistance(color.rgb, centroid);
-        if (distance < minDistance) {
-          minDistance = distance;
-          clusterIndex = i;
-        }
-      });
-      
-      clusters[clusterIndex].push(colorIndex);
-    });
-    
-    // Recalculate centroids
-    const newCentroids = centroids.map((_, i) => {
-      const clusterColors = clusters[i].map(colorIndex => colors[colorIndex].rgb);
-      
-      if (clusterColors.length === 0) {
-        // If cluster is empty, keep current centroid
-        return centroids[i];
-      }
-      
-      // Calculate average RGB values
-      const sumRGB = clusterColors.reduce(
-        (sum, rgb) => [sum[0] + rgb[0], sum[1] + rgb[1], sum[2] + rgb[2]],
-        [0, 0, 0]
-      );
-      
-      return [
-        Math.round(sumRGB[0] / clusterColors.length),
-        Math.round(sumRGB[1] / clusterColors.length),
-        Math.round(sumRGB[2] / clusterColors.length)
-      ];
-    });
-    
-    // Check for convergence
-    const centroidsChanged = newCentroids.some((centroid, i) => 
-      rgbDistance(centroid, centroids[i]) > 1
-    );
-    
-    centroids = newCentroids;
-    
-    if (!centroidsChanged) break;
-  }
-  
-  // Map clusters to named color families
-  const result: { [key: string]: ColorData[] } = {};
-  
-  centroids.forEach((centroid, i) => {
-    // Determine color family for this centroid
-    const family = getColorFamily(centroid).main;
-    
-    // Group colors by this family
-    const clusterColors = clusters[i].map(colorIndex => colors[colorIndex]);
-    
-    if (!result[family]) {
-      result[family] = [];
-    }
-    
-    result[family].push(...clusterColors);
-  });
-  
-  return result;
-};
-
-// Convert hex to CSS color string
-export const hexToCssColor = (hex: string): string => {
-  return hex.startsWith('#') ? hex : `#${hex}`;
-};
-
-// Convert RGB array to CSS color string
-export const rgbToCssColor = (rgb: number[]): string => {
-  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
-};
-
-// Add a new function to validate and verify color classification
-/**
- * Utility function to validate color classification
- * Useful for testing and debugging color classifications
- * 
- * @param rgb RGB color array [r, g, b]
- * @returns Object with color details including HSL values and classification
- */
-export const validateColorClassification = (rgb: number[]): {
-  rgb: number[];
-  hsl: [number, number, number];
-  family: ColorFamily;
-} => {
-  const hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
-  const family = getColorFamily(rgb);
-  
-  return {
-    rgb,
-    hsl,
-    family
-  };
 };
