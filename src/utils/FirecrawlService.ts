@@ -80,22 +80,7 @@ export class FirecrawlService {
             type: 'wait',
             milliseconds: 3000
           }
-        ],
-        extract: {
-          schema: {
-            colors: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  hex: { type: "string" },
-                  rgb: { type: "string" }
-                }
-              }
-            }
-          }
-        }
+        ]
       }) as FirecrawlResponse;
 
       if (!scrapeResponse.success) {
