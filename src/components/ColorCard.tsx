@@ -43,6 +43,15 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps)
   // Get chroma and lightness values for display
   const chroma = getChroma(color.rgb);
   const lightness = getLightness(color.rgb);
+
+  // Format the display string as requested: M24/1 - #261C1B - (38, 28, 27)
+  const formatColorDisplay = () => {
+    let display = `${color.name} - ${color.hex} - (${color.rgb.join(', ')})`;
+    if (displayFormat === "all" && color.lab) {
+      display += ` - L: ${color.lab[0].toFixed(2)}, a: ${color.lab[1].toFixed(2)}, b: ${color.lab[2].toFixed(2)}`;
+    }
+    return display;
+  };
   
   return (
     <>
@@ -132,6 +141,27 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps)
                 </Button>
               </div>
             )}
+
+            {/* Full format display */}
+            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-600 dark:text-gray-300">Full:</span>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-5 w-5" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyToClipboard(formatColorDisplay(), "Full color string");
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+              <p className="text-xs font-mono text-gray-700 dark:text-gray-300 mt-1">
+                {formatColorDisplay()}
+              </p>
+            </div>
           </div>
         </div>
       </Card>
@@ -157,6 +187,24 @@ const ColorCard = ({ color, displayFormat, viewMode, onDelete }: ColorCardProps)
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+
+            {/* Display the formatted string prominently */}
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Color String:</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => copyToClipboard(formatColorDisplay(), "Full color string")}
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copy
+                </Button>
+              </div>
+              <p className="text-sm font-mono mt-1 text-gray-900 dark:text-gray-100">
+                {formatColorDisplay()}
+              </p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
