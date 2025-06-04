@@ -10,7 +10,6 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ColorAlbums from "@/components/ColorAlbums";
 import { colorApiService } from "@/services/colorApi";
 import { transformBackendColorToFrontend } from "@/utils/colorDataTransform";
-import { getColorFamily } from "@/utils/colorUtils";
 
 // Lazy load heavy components
 const ColorLibrary = lazy(() => import("@/components/ColorLibrary"));
@@ -201,7 +200,7 @@ const Index = () => {
     });
   }, [activeLibrary]);
 
-  // Handle export - simplified without XLSX
+  // Handle export
   const handleExport = useCallback((libraryId: number) => {
     const library = colorLibraries.find(lib => lib.id === libraryId);
     if (!library) return;
@@ -210,34 +209,29 @@ const Index = () => {
     
     try {
       setTimeout(() => {
-        // Create CSV content
-        const headers = ['Name', 'HEX', 'RGB', 'Family'];
-        const csvRows = [headers.join(',')];
+        // Create workbook
+        const workbook = XLSX.utils.book_new();
         
         // Format colors for export
-        library.colors.forEach(color => {
-          const row = [
-            color.name || '',
-            color.hex,
-            `"rgb(${color.rgb.join(', ')})"`,
-            typeof color.family === 'string' 
-              ? color.family 
-              : `${color.family?.main || ''}${color.family?.sub ? ` - ${color.family.sub}` : ''}`
-          ];
-          csvRows.push(row.join(','));
-        });
+        const exportData = library.colors.map(color => ({
+          Name: color.name,
+          HEX: color.hex,
+          RGB: `rgb(${color.rgb.join(", ")})`,
+          Family: typeof color.family === 'string' 
+            ? color.family 
+            : `${color.family.main}${color.family.sub ? ` - ${color.family.sub}` : ''}`
+        }));
         
-        // Create and download CSV file
-        const csvContent = csvRows.join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${library.name}-colors.csv`;
-        link.click();
-        window.URL.revokeObjectURL(url);
+        // Create worksheet
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
         
-        toast.success(`Exported "${library.name}" library as CSV`);
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(workbook, worksheet, library.name);
+        
+        // Generate file and download
+        XLSX.writeFile(workbook, `${library.name}-colors.xlsx`);
+        
+        toast.success(`Exported "${library.name}" library`);
         setIsProcessing(false);
       }, 0);
     } catch (error) {

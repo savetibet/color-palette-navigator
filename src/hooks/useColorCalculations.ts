@@ -17,7 +17,7 @@ const useColorCalculations = (
   const filteredColors = useMemo(() => {
     return colors.filter((color) => {
       const matchesSearch = searchQuery
-        ? (color.name && color.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        ? color.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           color.hex.toLowerCase().includes(searchQuery.toLowerCase())
         : true;
         
