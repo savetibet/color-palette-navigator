@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import { ColorData, ColorLibraryData } from "@/types/colors";
 import { cn } from "@/lib/utils";
@@ -10,6 +12,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ColorAlbums from "@/components/ColorAlbums";
 import { colorApiService } from "@/services/colorApi";
 import { transformBackendColorToFrontend } from "@/utils/colorDataTransform";
+import { Database } from "lucide-react";
 
 // Lazy load heavy components
 const ColorLibrary = lazy(() => import("@/components/ColorLibrary"));
@@ -266,6 +269,28 @@ const Index = () => {
       />
       
       <main className="container mx-auto px-4 py-6">
+        {/* Quick Access to ARS */}
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Database className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div>
+                <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                  ARS Color Reference System
+                </h3>
+                <p className="text-sm text-blue-600 dark:text-blue-300">
+                  Access standardized color collections ARS 700, 1200, and 1400
+                </p>
+              </div>
+            </div>
+            <Link to="/ars">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                Open ARS
+              </Button>
+            </Link>
+          </div>
+        </div>
+
         <div className="flex gap-4 mb-6">
           <button
             onClick={() => setShowAlbums(false)}
