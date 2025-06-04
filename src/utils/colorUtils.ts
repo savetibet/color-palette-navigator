@@ -21,6 +21,58 @@ export const hexToRgb = (hex: string): number[] => {
   return [r, g, b];
 };
 
+// Function to convert RGB to HEX
+export const rgbToHex = (r: number, g: number, b: number): string => {
+  const componentToHex = (c: number) => {
+    const hex = Math.round(Math.max(0, Math.min(255, c))).toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+  
+  return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+};
+
+// Function to convert LAB to RGB
+export const labToRgb = (l: number, a: number, b: number): number[] => {
+  // Convert LAB to XYZ
+  let fy = (l + 16) / 116;
+  let fx = a / 500 + fy;
+  let fz = fy - b / 200;
+  
+  const delta = 6 / 29;
+  const deltaSquared = delta * delta;
+  const deltaCubed = delta * delta * delta;
+  
+  let xr = fx > delta ? fx * fx * fx : 3 * deltaSquared * (fx - 4 / 29);
+  let yr = fy > delta ? fy * fy * fy : 3 * deltaSquared * (fy - 4 / 29);
+  let zr = fz > delta ? fz * fz * fz : 3 * deltaSquared * (fz - 4 / 29);
+  
+  // Observer = 2°, Illuminant = D65
+  const xn = 95.047;
+  const yn = 100.0;
+  const zn = 108.883;
+  
+  const x = xr * xn;
+  const y = yr * yn;
+  const z = zr * zn;
+  
+  // Convert XYZ to RGB
+  let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
+  let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
+  let bValue = x * 0.0557 + y * -0.2040 + z * 1.0570;
+  
+  // Apply gamma correction
+  r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
+  g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
+  bValue = bValue > 0.0031308 ? 1.055 * Math.pow(bValue, 1 / 2.4) - 0.055 : 12.92 * bValue;
+  
+  // Convert to 0-255 range and clamp
+  r = Math.max(0, Math.min(255, Math.round(r * 255)));
+  g = Math.max(0, Math.min(255, Math.round(g * 255)));
+  bValue = Math.max(0, Math.min(255, Math.round(bValue * 255)));
+  
+  return [r, g, bValue];
+};
+
 // Function to convert RGB to LAB
 export const rgbToLab = (rInput: number, gInput: number, bInput: number): number[] => {
   // Convert RGB to XYZ - use let instead of const since we need to modify these values
