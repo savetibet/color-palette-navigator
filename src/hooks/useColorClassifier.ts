@@ -21,7 +21,7 @@ export default function useColorClassifier() {
   }, [testColor]);
   
   // Batch classify multiple colors at once
-  const batchClassify = (hexColors: string[]): Array<{ hex: string; family: ColorFamily }> => {
+  const batchClassify = (hexColors: string[]): Array<{ hex: string; family: string }> => {
     return ColorClassifier.batchAnalyze(hexColors);
   };
   

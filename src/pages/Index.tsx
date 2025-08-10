@@ -12,6 +12,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ColorAlbums from "@/components/ColorAlbums";
 import { colorApiService } from "@/services/colorApi";
 import { transformBackendColorToFrontend } from "@/utils/colorDataTransform";
+import { getColorFamily } from "@/utils/colorUtils";
 import { Database } from "lucide-react";
 
 // Lazy load heavy components
@@ -111,7 +112,7 @@ const Index = () => {
       // Process colors to add family classification
       const processedColors = colors.map(color => ({
         ...color,
-        family: getColorFamily(color.rgb)
+        family: getColorFamily([color.rgb[0], color.rgb[1], color.rgb[2]])
       }));
       
       const newLibrary: ColorLibraryData = {
@@ -212,27 +213,28 @@ const Index = () => {
     
     try {
       setTimeout(() => {
-        // Create workbook
-        const workbook = XLSX.utils.book_new();
-        
         // Format colors for export
-        const exportData = library.colors.map(color => ({
-          Name: color.name,
-          HEX: color.hex,
-          RGB: `rgb(${color.rgb.join(", ")})`,
-          Family: typeof color.family === 'string' 
-            ? color.family 
-            : `${color.family.main}${color.family.sub ? ` - ${color.family.sub}` : ''}`
-        }));
+        const data = [
+          ['Name', 'HEX', 'RGB', 'Family'],
+          ...library.colors.map(color => [
+            color.name,
+            color.hex,
+            `rgb(${color.rgb.join(", ")})`,
+            typeof color.family === 'string' 
+              ? color.family 
+              : `${color.family.main}${color.family.sub ? ` - ${color.family.sub}` : ''}`
+          ])
+        ];
         
-        // Create worksheet
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        
-        // Add worksheet to workbook
-        XLSX.utils.book_append_sheet(workbook, worksheet, library.name);
-        
-        // Generate file and download
-        XLSX.writeFile(workbook, `${library.name}-colors.xlsx`);
+        // Download CSV file
+        const csvContent = data.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${library.name}-colors.csv`;
+        link.click();
+        window.URL.revokeObjectURL(url);
         
         toast.success(`Exported "${library.name}" library`);
         setIsProcessing(false);

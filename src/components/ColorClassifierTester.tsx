@@ -44,7 +44,7 @@ const SAMPLE_COLORS = [
 const ColorClassifierTester = () => {
   const { testColor, setTestColor, colorAnalysis, batchClassify } = useColorClassifier();
   const [inputColor, setInputColor] = useState('#FF0000');
-  const [batchResults, setBatchResults] = useState<Array<{ hex: string; family: { main: string; sub: string | null } }>>([]);
+  const [batchResults, setBatchResults] = useState<Array<{ hex: string; family: string }>>([]);
   const [showBatchTest, setShowBatchTest] = useState(false);
   
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,10 +123,7 @@ const ColorClassifierTester = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-bold text-lg">Classification</h3>
-                    <p className="text-2xl font-bold">{colorAnalysis.family.main}</p>
-                    {colorAnalysis.family.sub && (
-                      <p className="text-gray-500">Shade: {colorAnalysis.family.sub}</p>
-                    )}
+                     <p className="text-2xl font-bold">{colorAnalysis.family}</p>
                   </div>
                   
                   <div className="space-y-2">
@@ -165,10 +162,9 @@ const ColorClassifierTester = () => {
                     className="w-8 h-8 rounded-md border" 
                     style={{ backgroundColor: result.hex }}
                   ></div>
-                  <div className="flex-1 text-sm">
-                    <p className="font-medium">{result.family.main}</p>
-                    <p className="text-xs text-gray-500">{result.family.sub || ''}</p>
-                  </div>
+                   <div className="flex-1 text-sm">
+                     <p className="font-medium">{result.family}</p>
+                   </div>
                 </div>
               ))}
             </div>

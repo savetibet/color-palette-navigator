@@ -13,9 +13,9 @@ export class ColorClassifier {
    * @param hex Hex color string (with or without #)
    * @returns Color family object with main and sub categories
    */
-  static classifyHex(hex: string): ColorFamily {
+  static classifyHex(hex: string): string {
     const rgb = hexToRgb(hex);
-    return getColorFamily(rgb);
+    return getColorFamily([rgb[0], rgb[1], rgb[2]]);
   }
   
   /**
@@ -28,14 +28,14 @@ export class ColorClassifier {
     hex: string,
     rgb: number[],
     hsl: [number, number, number],
-    family: ColorFamily,
+    family: string,
     isGrayish: boolean,
     isDark: boolean,
     isVibrant: boolean
   } {
     const rgb = hexToRgb(hex);
     const hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
-    const family = getColorFamily(rgb);
+    const family = getColorFamily([rgb[0], rgb[1], rgb[2]]);
     
     return {
       hex: hex.startsWith('#') ? hex : `#${hex}`,
@@ -56,7 +56,7 @@ export class ColorClassifier {
    */
   static batchAnalyze(hexColors: string[]): Array<{
     hex: string,
-    family: ColorFamily
+    family: string
   }> {
     return hexColors.map(hex => ({
       hex: hex.startsWith('#') ? hex : `#${hex}`,
